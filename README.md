@@ -1,4 +1,4 @@
-# mp_qMRI
+# mp_qMRI (Multi-parametric Quantitative MRI) 
 Authors: 
 
 Dennis C. Thomas & Mariem Ghazouani
