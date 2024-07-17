@@ -3,7 +3,7 @@ Authors:
 
 Dennis C. Thomas & Mariem Ghazouani
 
-These are the codes for the Frankurt vendor-based mp_qMRI protocol. If you use these codes, please cite our publication:
+These are the codes for the Frankurt vendor-based mp_qMRI protocol. If you use these codes, please cite our publication, where this protocol and processing pipeline are described:
 
 Dennis C Thomas, Ralf Deichmann, Ulrike Nöth, Christian Langkammer, Mónica Ferreira, Rejane Golbach, Elke Hattingen, Katharina J Wenger, "A fast protocol for multi-center, multi-parametric quantitative MRI studies in brain tumor patients using vendor sequences, Neuro-Oncology Advances", 2024;, vdae117, https://doi.org/10.1093/noajnl/vdae117
 
