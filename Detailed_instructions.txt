@@ -26,4 +26,4 @@ B1_2.nii
 
 docker run -it --name mpqMRI -v "<path_to_your_input_folder>:/app/input" mpqmri python3 /app/script_run.py --input-folder /app/input
 
-# NOTE: In the above command only give the path to the input folder in place of 'path_to_your_input_folder'. Rest of the command remains the same.#
+# NOTE: In the above command, only give the path to the input folder in place of '<path_to_your_input_folder>'. Rest of the command remains the same.#
