@@ -2,6 +2,7 @@
 Authors: 
 
 Dennis C. Thomas & Mariem Ghazouani
+Neuroradiology research group at the Co-BIC, University Hospital Frankfurt
 
 These are the codes for the Frankurt vendor-based mp_qMRI protocol. If you use these codes, please cite our publication where this protocol and processing pipeline are described:
 
