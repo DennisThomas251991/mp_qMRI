@@ -225,11 +225,29 @@ class H2O_map_mpqMRI():
         else:
           M0_T1_biascorr = M0_T1corr/self.bias_field_map
 
-        thresh = 0.95
-        CSF = M0_T1_biascorr[csf_mask_binary>thresh]
+        # Define the threshold and parameters
+        threshold = 0.95
         bins = 200
         interval = [4000, 9000]
-        hist, binedges = np.histogram(CSF, bins=bins, range=interval)
+
+        # Extract the relevant CSF data using the threshold
+        CSF = M0_T1_biascorr[csf_mask_binary > threshold]
+
+        # Calculate the bin width
+        bin_width = (interval[1] - interval[0]) / bins
+
+        # Create bin edges and calculate the bin indices for the CSF data
+        bin_indices = np.floor((CSF - interval[0]) / bin_width).astype(int)
+
+        # Filter out data that falls outside the interval
+        valid_indices = (bin_indices >= 0) & (bin_indices < bins)
+        filtered_indices = bin_indices[valid_indices]
+
+        # Calculate the mode of the bin indices
+        mode_bin_index = mode(filtered_indices).mode[0]
+
+        # Calculate the center of the mode bin
+        CSF_calib_factor = interval[0] + (mode_bin_index + 0.5) * bin_width
  
         bincenters = binedges[0:-1] + np.diff(binedges)/2
         CSF_calib_factor = bincenters[hist.argmax()]
