@@ -1,0 +1,33 @@
+Usage: docker run -it --name mpqMRI -v "path/to/input_folder:/app/input" mpqmri python3 /app/script_run.py [OPTIONS]
+
+Options:
+  --input-folder                       Path to the input folder containing files to be processed (required)
+  --Bias_field_corr_method             Bias Field correction method [Choices: 'SPM', 'FSL', Default: 'SPM']
+  --FA1                                Flip angle 1 [Default: 5]
+  --FA2                                Flip angle 2 [Default: 32]
+  --TR1                                TR1 in ms [Default: 30]
+  --TR2                                TR2 in ms [Default: 30]
+  --nTE                                Number of echo times to be used for T1-Mapping [Default: 2]
+  --x0                                 x0 value in ms [Default: 1000]
+  --phantom                            Use phantom [Default: False]
+  --masking                            Apply masking [Default: True]
+  --b1plus_mapping                     Perform B1+ mapping [Default: True]
+  --corr_for_imperfect_spoiling        Correct for imperfect spoiling [Default: True]
+  --Phantom_mask_threshold_B1mapping   Threshold for B1 mapping phantom mask [Default: 100]
+  --Phantom_mask_threshold_T1mapping   Threshold for T1 mapping phantom mask [Default: 100]
+  --spoil_increment                    Spoil increment [Default: 50]
+  --slices                             Slices [Default: all]
+  --echotimes                          Echo times [Default: 3.2, 7.7, 12.2, 16.7, 21.2, 25.7]
+  --QSM_average_echoes_qsm             Echoes for QSM averaging [Default: [3, 4, 5, 6]]
+  --coregister_mGREs                   Coregister mGREs [Default: False]
+  --B1map_orientation                  Orientation of the B1 map [Choices: 'Sag', 'Tra', Default: 'Tra']
+  --complex_interpolation              Use complex interpolation [Default: False]
+  --B1_mapping_method                  B1 mapping method [Choices: 'Fast EPI', 'Volz 2010', Default: 'Fast EPI']
+  --QSM_mapping                        Perform QSM mapping [Default: True]
+  --help                               Show this help message and exit
+
+You can change these parameters in two ways:
+1. By providing the parameters directly in the command line, e.g., `docker run -it --name mpqMRI -v "/path/to/input_folder:/app/input" mpqmri python3 /app/script_run.py --input-folder /app/input --FA1 10 --masking False`
+2. By running the command `docker run -it --name mpqMRI -v "/path/to/input_folder:/app/input" mpqmri python3 /app/script_run.py --input-folder /app/input´ without any additional Parameters and you will be asked to change them interactively.
+
+
