@@ -245,13 +245,10 @@ class H2O_map_mpqMRI():
         filtered_indices = bin_indices[valid_indices]
 
         # Calculate the mode of the bin indices
-        mode_bin_index = mode(filtered_indices).mode[0]
+        mode_bin_index = mode(filtered_indices).mode
 
         # Calculate the center of the mode bin
         CSF_calib_factor = interval[0] + (mode_bin_index + 0.5) * bin_width
- 
-        bincenters = binedges[0:-1] + np.diff(binedges)/2
-        CSF_calib_factor = bincenters[hist.argmax()]
         
         M0_T1_biascorr_CSFT1mod = M0_T1_biascorr
         
