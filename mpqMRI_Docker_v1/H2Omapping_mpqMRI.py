@@ -12,6 +12,7 @@ import os
 from Useful_functions import fsl_fastseg
 from Useful_functions import fsl_brain_masking
 from Useful_functions import SPM_segment
+from scipy.stats import mode
 
 class H2O_map_mpqMRI():
     
