@@ -15,7 +15,6 @@ Date of completion of version 1 of 'Frankfurt_qMRI' python package:
     05/06/2024
     
 """
-
 import numpy as np
 
 from ralf_qMRI_conv_3D import ralf_qMRI_conv_3D

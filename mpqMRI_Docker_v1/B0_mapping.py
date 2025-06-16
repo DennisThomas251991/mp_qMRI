@@ -37,58 +37,70 @@ class B0_mapping():
         
             phase_image = self.arguments.phase_image2;
             
-            mask = self.brain_masking()
-            pha = nib.load(phase_image).get_fdata()
+        elif gre=='gre1':
             
-            pha_rescaled = pha * mask[:,:,:,None]
-            pha_rescaled = pha * np.pi/4096
-
-            # unwrap phase
-            com = center_of_mass(mask)
-            com = np.round(com)
-
-            com = np.asarray(com, dtype=int)
-
-            phase_unwr = np.zeros(pha_rescaled.shape)
-
-            for i in range(phase_unwr.shape[-1]):
-
-                unwr_phase = unwrap_phase(pha_rescaled[:,:,:,i])
-                #unwr_phase = unwr_phase/unwr_phase.max() * np.pi
-                phase_unwr[:,:,:,i] = unwr_phase
+            phase_image = self.arguments.phase_image1;
                 
+        mask = self.brain_masking()
+        pha = nib.load(phase_image).get_fdata()
+        pha_rescaled = pha * mask[:,:,:,None]
+    
+        if self.arguments.Vendor =='Philips':
+            
+            pha_rescaled = pha_rescaled * np.pi/3142
+            
+        if self.arguments.Vendor =='Siemens':
+            
+            pha_rescaled = pha_rescaled * np.pi/4096
+        # pha_rescaled = pha * mask[:,:,:,None]
+        # pha_rescaled = pha * np.pi/4096
 
-            temporal = pha_rescaled[com[0],com[1],com[2],:]
-            unwr_temporal = unwrap_phase(temporal)
-            unwr_final = phase_unwr- phase_unwr[com[0],com[1],com[2],:] + unwr_temporal
-            
-            dst = os.path.split(self.arguments.gre2_path)[0]
-            
-            Unwrapped_nii = nib.Nifti1Image(unwr_final, affine = self.arguments.affine)
-            
-            name = 'Unwrapped_phase.nii'
-            Unwrapped_path = dst + '/' + name 
-            nib.save(Unwrapped_nii, Unwrapped_path)
-            
-            unwr_final_mod = np.reshape(unwr_final, (np.size(unwr_final)//np.shape(unwr_final)[-1], 
-                                         np.shape(unwr_final)[-1]))
-            
-            echoTimes = self.arguments.echotimes
-            
-            intercerpt, slope = self.linear_fit(echoTimes, unwr_final_mod)
+        # unwrap phase
+        com = center_of_mass(mask)
+        com = np.round(com)
 
-            slope_reshaped = np.reshape(slope, np.shape(unwr_final)[:-1])
-            slope_reshaped = slope_reshaped * 1000
+        com = np.asarray(com, dtype=int)
 
-            slope_reshaped = slope_reshaped * mask
+        phase_unwr = np.zeros(pha_rescaled.shape)
+
+        for i in range(phase_unwr.shape[-1]):
+
+            unwr_phase = unwrap_phase(pha_rescaled[:,:,:,i])
+            #unwr_phase = unwr_phase/unwr_phase.max() * np.pi
+            phase_unwr[:,:,:,i] = unwr_phase
             
-            dst = os.path.split(self.arguments.gre2_path)[0]
-            
-            B0_nii = nib.Nifti1Image(slope_reshaped, affine = self.arguments.affine)
-            
-            name = 'B0.nii'
-            B0_path = dst + '/' + name 
-            nib.save(B0_nii, B0_path)
+
+        temporal = pha_rescaled[com[0],com[1],com[2],:]
+        unwr_temporal = unwrap_phase(temporal)
+        unwr_final = phase_unwr- phase_unwr[com[0],com[1],com[2],:] + unwr_temporal
+        
+        dst = os.path.split(self.arguments.gre2_path)[0]
+        
+        Unwrapped_nii = nib.Nifti1Image(unwr_final, affine = self.arguments.affine)
+        
+        name = 'Unwrapped_phase.nii.gz'
+        Unwrapped_path = dst + '/' + name 
+        nib.save(Unwrapped_nii, Unwrapped_path)
+        
+        unwr_final_mod = np.reshape(unwr_final, (np.size(unwr_final)//np.shape(unwr_final)[-1], 
+                                        np.shape(unwr_final)[-1]))
+        
+        echoTimes = self.arguments.echotimes
+        
+        intercerpt, slope = self.linear_fit(echoTimes, unwr_final_mod)
+
+        slope_reshaped = np.reshape(slope, np.shape(unwr_final)[:-1])
+        slope_reshaped = slope_reshaped * 1000
+
+        slope_reshaped = slope_reshaped * mask
+        
+        dst = os.path.split(self.arguments.gre2_path)[0]
+        
+        B0_nii = nib.Nifti1Image(slope_reshaped, affine = self.arguments.affine)
+        
+        name = 'B0.nii.gz'
+        B0_path = dst + '/' + name 
+        nib.save(B0_nii, B0_path)
 
         if coregister_2_EPI:
             B0map_path = self.coregister_B0_map_EPI()
@@ -142,11 +154,12 @@ class B0_mapping():
         
         moving_nii = self.arguments.gre2_path
         fixed_nii = self.arguments.path_epi_90
-        matrix_filename = fsl_flirt_registration(moving_nii, fixed_nii, dof=6)
+        additional_args= '-applyxfm -usesqform'
+        matrix_filename = fsl_flirt_registration(moving_nii, fixed_nii,additional_args, dof=6)
         dst = os.path.split(moving_nii)[0]
         
         matrix_path = dst + '/' + matrix_filename
-        moving_nii = dst + '/' + 'B0' + '.nii'
+        moving_nii = dst + '/' + 'B0' + '.nii.gz'
         
         B0map_coreg_name = fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix_path)
         

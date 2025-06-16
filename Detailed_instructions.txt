@@ -1,29 +1,124 @@
-Before you begin make sure you have the docker desktop app and git running on your computer
+mp-qMRI Processing Pipeline - User Guide
+========================================
 
-1. Create a folder at some location where you can pull the docker codes from this repository. 
-For example, let the folder name be "mpqMRI_docker" located in the "D:" drive.
-2. Open powershell and navigate to "D:/"mpqMRI_docker" path. 
-3. Run the following command there: 
+This tool processes quantitative MRI data and generates B1, T1, T2*, H2O, and QSM maps. You can run it via Docker or directly using the main Python script.
 
-git clone https://github.com/DennisThomas251991/mp_qMRI.git
+---
 
-4. A folder called 'mpqMRI' will be created in the "mpqMRI_docker" folder. 
-5. Navigate to 'mpqMRI_docker/mpqMRI/mpqMRI_Docker_v1/".
-6. Build the docker image using the command :
+Getting Started
+---------------
+Before you begin, ensure that you have the following installed on your system:
+- Docker Desktop: https://www.docker.com/products/docker-desktop/
+- Git: https://git-scm.com/downloads
+- Python 3 (if running without Docker)
 
-docker build -t mpqmri .
+Repository Setup
+----------------
+1. Create a folder on your system to store the project, e.g.:
+   D:/mpqMRI_docker
 
-7. Now, your docker image is built and you are ready to process data using docker. However, the data needs to be first prepared in the right format and saved in an "input folder".
-8. For this, create an "input folder" with the data : The folder should contain six files named in this way (the files can be '.nii' or '.gz':
-M0w_mag.nii
-T1w_mag.nii
-M0w_pha.nii
-T1w_pha.nii
-B1_1.nii
-B1_2.nii
+2. Open PowerShell (or your terminal) and navigate to that folder:
+   cd D:/mpqMRI_docker
 
-9. Run the docker using this command:
+3. Clone the repository:
+   git clone https://github.com/DennisThomas251991/mp_qMRI.git
 
-docker run -it --name mpqMRI -v "<path_to_your_input_folder>:/app/input" mpqmri python3 /app/script_run.py --input-folder /app/input
+4. Navigate to the Docker version folder:
+   cd mp_qMRI/mpqMRI_Docker_v1
 
-# NOTE: In the above command, only give the path to the input folder in place of '<path_to_your_input_folder>'. Rest of the command remains the same.#
+Building the Docker Image
+-------------------------
+From the mpqMRI_Docker_v1 directory, build the Docker image using:
+
+docker build -t mpqmri-pipeline .
+
+This command creates a Docker image named mpqmri-pipeline.
+
+Input Folder Structure
+----------------------
+If your input is DICOM:
+- Simply place all DICOM files in a folder (e.g. D:/mpqMRI_docker/input).
+- The pipeline will automatically convert them to NIfTI.
+
+If your input is NIfTI:
+The input folder must contain these six files, named exactly as shown (can be .nii or .nii.gz):
+
+    M0w_mag.nii / .nii.gz
+    T1w_mag.nii / .nii.gz
+    M0w_pha.nii / .nii.gz
+    T1w_pha.nii / .nii.gz
+    B1_1.nii     / .nii.gz
+    B1_2.nii     / .nii.gz
+
+These files must be directly inside the input folder — not nested in subfolders. All six are required.
+
+Running the Pipeline with Docker
+--------------------------------
+Once your input data is ready:
+
+docker run -it --rm -v "D:/mpqMRI_docker/input:/data" mpqmri-pipeline --input-folder /data
+
+You can add more options as needed. For example:
+
+docker run -it --rm -v "D:/mpqMRI_docker/input:/data" mpqmri-pipeline --input-folder /data --Vendor Philips --Input_data_type Nifti --B1_mapping_method "Fast EPI"
+All the same command-line arguments used in Docker are available here.
+
+Command-Line Arguments
+----------------------
+--input-folder: (Required) Path to the input folder
+--Input_data_type: 'DICOM' (default) or 'Nifti'
+--Vendor: 'Siemens' (default) or 'Philips'
+--Philips_acquisition_method: 'Combined FA acquisition' (default) or 'Separate FA acquisition'
+--Bias_field_corr_method: 'SPM' (default) or 'FSL'
+--FA1, --FA2: Flip angles (default 5, 32)
+--TR1, --TR2: Repetition times in ms (default 30, 30)
+--nTE: Number of echo times for T1 mapping (default 2)
+--x0: x0 value in ms (default 1000)
+--phantom: Use phantom mode (default: False)
+--masking: Apply masking (default: True)
+--b1plus_mapping: Perform B1+ mapping (default: True)
+--corr_for_imperfect_spoiling: Apply spoiling correction (default: True)
+--Phantom_mask_threshold_B1mapping: Threshold (default: 100)
+--Phantom_mask_threshold_T1mapping: Threshold (default: 100)
+--spoil_increment: Spoiling increment (default: 50)
+--slices: Specify slices (default: all)
+--echotimes: Echo times in ms (default: [3.2, 7.7, 12.2, 16.7, 21.2, 25.7])
+--QSM_average_echoes_qsm: Echoes used for QSM averaging (default: [3, 4, 5, 6])
+--coregister_mGREs: Coregister mGREs (default: False)
+--B1map_orientation: 'Sag' or 'Tra' (default: 'Tra')
+--complex_interpolation: Use complex interpolation (default: False)
+--B1_mapping_method: 'Fast EPI' (default) or 'Volz 2010'
+--QSM_mapping: Perform QSM mapping (default: True)
+--help: Show help and exit
+
+Output
+------
+- All results are saved in the input folder under:
+  Niftis/Final_qMRI_maps/
+
+- A map_info.txt file will explain the contents of each output map.
+
+Interactive Mode
+----------------
+- The script supports interactive execution.
+- You’ll be prompted to adjust parameters or accept defaults.
+
+Help from Within the Container
+------------------------------
+To see all command-line options:
+
+docker run --rm mpqmri-pipeline --help
+
+Running the Pipeline Without Docker
+-----------------------------------
+If you prefer to run the pipeline directly using Python, go to the Python_Codes folder and run:
+
+python Script_mpqMRI.py 
+
+But make sure you change the necessary paths and Parameters inside the script to match your data.
+
+
+Contact & Source Code
+---------------------
+For more details, see the source code in the GitHub repository:
+https://github.com/DennisThomas251991/mp_qMRI

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jan 18 11:20:48 2023
+Created on Tue May  9 09:42:24 2023
 
 Author:
     Dennis C. Thomas
@@ -10,15 +10,16 @@ Date of completion of version 1 of 'Frankfurt_qMRI' python package:
     05/06/2024
     
 """
+
 from scipy import optimize as opt
 import numpy as np
 from datetime import datetime
-from Useful_functions import fsl_brain_masking
-from Useful_functions import fsl_flirt_registration
-from Useful_functions import fsl_flirt_applyxfm
-from Useful_functions import threshold_masking
-from Useful_functions import split_all_echoes
-from Useful_functions import combine_echoes
+from Dennis.Useful_functions import fsl_brain_masking
+from Dennis.Useful_functions import fsl_flirt_registration
+from Dennis.Useful_functions import fsl_flirt_applyxfm
+from Dennis.Useful_functions import threshold_masking
+from Dennis.Useful_functions import split_all_echoes
+from Dennis.Useful_functions import combine_echoes
 import os
 import nibabel as nib
 
@@ -69,178 +70,183 @@ class T1_mapping_mpqMRI():
         """
         
         self.arguments = arguments
-        self.gre1 = arguments.gre_list[0]
-        self.gre2 = arguments.gre_list[1]
+        self.s1 = arguments['gre_list'][0]
+        self.s2 = arguments['gre_list'][1]
         
-        self.FA_list = arguments.FA_list
+        self.FA_list = arguments['FA_list']
         
         self.b1plus = B1map_coreg
-        self.TR_list = arguments.TR_list
+        self.TR_list = arguments['TR_list']
         
-        self.nTE = arguments.nTE
-        self.slices = arguments.slices 
+        self.nTE = arguments['nTE']
+        self.slices = arguments['slices'] 
         
-        self.shape = np.shape(arguments.b1plus)
-        self.index = np.ones(np.shape(arguments.b1plus))
+        self.shape = np.shape(arguments['b1plus'])
+        self.idx = np.ones(np.shape(arguments['b1plus']))
         
-        self.initial_t1 = arguments.x0
+        self.x0 = arguments['x0']
         
-        self.signal1 = self.gre2[..., 0:self.nTE] * np.sin(self.b1plus*self.FA_list[0])[..., None]
-        self.signal2 = self.gre1[..., 0:self.nTE] * np.sin(self.b1plus*self.FA_list[1])[..., None]
+        self.F1 = self.s2[..., 0:self.nTE] * np.sin(self.b1plus*self.FA_list[0])[..., None]
+        self.F2 = self.s1[..., 0:self.nTE] * np.sin(self.b1plus*self.FA_list[1])[..., None]
         
-        self.B1_corr_cos1 = np.cos(self.b1plus*self.FA_list[0])
-        self.B1_corr_cos2 = np.cos(self.b1plus*self.FA_list[1])
+        self.cos1 = np.cos(self.b1plus*self.FA_list[0])
+        self.cos2 = np.cos(self.b1plus*self.FA_list[1])
         
-        self.TR1 = arguments.TR_list[0]
-        self.TR2 = arguments.TR_list[1]
+        self.TR1 = arguments['TR_list'][0]
+        self.TR2 = arguments['TR_list'][1]
         
              
         
     def run(self, save = True):
         
         
-        if self.arguments.corr_for_imperfect_spoiling:
+        if self.arguments['corr_for_imperfect_spoiling']:
             
             FA1, FA2 = self.corr_for_imperf_spoiling();
             self.FA1 = FA1
             self.FA2 = FA2
             
-            self.signal1 = self.gre2[..., 0:self.nTE] * np.sin(self.FA1)[..., None]
-            self.signal2 = self.gre1[..., 0:self.nTE] * np.sin(self.FA2)[..., None]
+            self.F1 = self.s2[..., 0:self.nTE] * np.sin(self.FA1)[..., None]
+            self.F2 = self.s1[..., 0:self.nTE] * np.sin(self.FA2)[..., None]
             
-            self.B1_corr_cos1 = np.cos(self.FA1)
-            self.B1_corr_cos2 = np.cos(self.FA2)
+            self.cos1 = np.cos(self.FA1)
+            self.cos2 = np.cos(self.FA2)
             
             if save:
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
+                dst = os.path.split(self.arguments['gre2_path'])[0]
             
-                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments.affine)
+                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments['affine'])
                 
-                name = 'FA1_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA1_map_B1corr_Spoilcorr.nii'
                 
                 FA1_path = dst + '/' + name 
                 nib.save(FA1_nii, FA1_path)
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
                 
-                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments.affine)
+                dst = os.path.split(self.arguments['gre2_path'])[0]
+            
+                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments['affine'])
                 
-                name = 'FA2_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA2_map_B1corr_Spoilcorr.nii'
                 
                 FA2_path = dst + '/' + name 
                 nib.save(FA2_nii, FA2_path)
         
-        if self.arguments.coregister_mGREs:
+        if self.arguments['coregister_mGREs']:
             
             self.coregistration_mGREs()
             
-        self.T1 = np.zeros(self.shape)
+        T1 = np.zeros(self.shape)
         
         if self.slices is all:
 
-            slice_range = range(np.shape(self.gre1)[2])
+            _slices = range(np.shape(self.s1)[2])
 
         else:
 
-            slice_range = range(self.slices[0], self.slices[1])
+            _slices = range(self.slices[0], self.slices[1])
 
-        print(f"Start Time = {datetime.now().strftime('%H:%M:%S')}")
+        starttime = datetime.now()
+        start_time = starttime.strftime("%H:%M:%S")
+        print("Start Time =", start_time)
 
-        if self.arguments.masking:
+        if self.arguments['masking']:
             
             self.brain_masking();
             
-        
-        for slice_idx in slice_range:
+        for i in _slices:
+            self.idx_i = self.idx[..., i]
+            self.cos1_i = self.cos1[..., i]
+            self.cos2_i = self.cos2[..., i]
+            self.F1_i = self.F1[..., i, :]
+            self.F2_i = self.F2[..., i, :]
             
-            self._process_slice(slice_idx)
-            
-            
-        self.T1[~np.isfinite(self.T1)] = 0
-        self.T1 = self.T1.clip(0, 10000)
+            if self.mask is not None:
 
-        print(f"Stop Time = {datetime.now().strftime('%H:%M:%S')}")
+                self.mask_i = self.mask[..., i]
+
+                print('%s/%s' % (i, len(_slices)))
+                T1[..., i] = self.fit_slice()
+            else:
+                print('%s/%s' % (i, len(_slices)))
+                T1[..., i] = self.fit_slice()
+        
+        T1[~np.isfinite(T1)] = 0
+        T1 = T1.clip(0, 10000)
+
+        stoptime = datetime.now()
+        stop_time = stoptime.strftime("%H:%M:%S")
+        print("Stop Time =", stop_time)
+        
         
         if save:
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
             
-            T1_nii = nib.Nifti1Image(self.T1, affine = self.arguments.affine)
+            T1_nii = nib.Nifti1Image(T1, affine = self.arguments['affine'])
             
-            name = 'T1_map_B1corr_%s_Spoilcorr_%s_%iechoes.nii.gz'%(self.arguments.b1plus_mapping, 
-                                                       self.arguments.corr_for_imperfect_spoiling,
-                                                       self.arguments.nTE)
+            name = 'T1_map_B1corr_%s_Spoilcorr_%s_%iechoes.nii'%(self.arguments['b1plus_mapping'], 
+                                                       self.arguments['corr_for_imperfect_spoiling'],
+                                                       self.arguments['nTE'])
             
             T1_path = dst + '/' + name 
             nib.save(T1_nii, T1_path)
-        return self.T1
+        return T1
     
     
-    def cost_function(self, T1, TR1, TR2, B1_corr_cos1, B1_corr_cos2, signal1, signal2):
+    def cost_function(self, T1, TR1, TR2, cos1, cos2, F1, F2):
         
 
-        term1 = signal1 * (1-np.exp(-TR1/T1)) / (1-(B1_corr_cos1*np.exp(-TR1/T1)))
-        term2 = signal2 * (1-np.exp(-TR2/T1)) / (1-(B1_corr_cos2*np.exp(-TR2/T1)))
+        f1 = F1 * (1-np.exp(-TR1/T1)) / (1-(cos1*np.exp(-TR1/T1)))
+        f2 = F2 * (1-np.exp(-TR2/T1)) / (1-(cos2*np.exp(-TR2/T1)))
 
-        return term1-term2
+        return f1-f2
 
-    
-    def _process_slice(self, slice_idx):
-        
-        index_slice = self.mask[..., slice_idx]
-        cos1_slice = self.B1_corr_cos1[..., slice_idx]
-        cos2_slice = self.B1_corr_cos2[..., slice_idx]
-        signal1_slice = self.signal1[..., slice_idx, :]
-        signal2_slice = self.signal2[..., slice_idx, :]
 
-        mask_slice = np.ones(index_slice.shape) if self.mask is None else self.mask[..., slice_idx]
-        
-        if self.slices is all:
+    def fit_slice(self):
 
-            slice_range = range(np.shape(self.gre1)[2])
+        shape = np.shape(self.idx_i)
 
+        idx = self.idx_i.ravel()
+        cos1 = self.cos1_i.ravel()
+        cos2 = self.cos2_i.ravel()
+        F1 = self.F1_i.reshape(np.shape(idx) + (np.shape(self.F1_i)[-1], ))
+        F2 = self.F2_i.reshape(np.shape(idx) + (np.shape(self.F2_i)[-1], ))
+        if self.mask is None:
+            mask = np.ones(idx.shape)
         else:
+            mask = self.mask_i.ravel()
+        T1 = np.zeros(np.shape(idx))
 
-            slice_range = range(self.slices[0], self.slices[1])
-            
-        print('%s/%s' % (slice_idx, len(slice_range)))
-        
-        self.T1[..., slice_idx] = self._fit_t1_map(index_slice, cos1_slice, cos2_slice, signal1_slice, signal2_slice, mask_slice)
-        
+        for i in range(np.size(idx)):
 
-    def _fit_t1_map(self, index_slice, cos1_slice, cos2_slice, signal1_slice, signal2_slice, mask_slice):
-        
-        shape = np.shape(index_slice)
-        flat_index = index_slice.ravel()
-        flat_cos1 = cos1_slice.ravel()
-        flat_cos2 = cos2_slice.ravel()
-        flat_signal1 = signal1_slice.reshape(np.shape(flat_index) + (np.shape(signal1_slice)[-1],))
-        flat_signal2 = signal2_slice.reshape(np.shape(flat_index) + (np.shape(signal2_slice)[-1],))
-        flat_mask = mask_slice.ravel()
-        
-        t1_values = np.zeros(np.shape(flat_index))
+            if idx[i]:
+                if mask[i]:
+                    T1[i] = opt.leastsq(self.cost_function,
+                                       self.x0,
+                                       args=(self.TR1, self.TR2,
+                                             cos1[i], cos2[i],
+                                             F1[i, :], F2[i, :]))[0]
+                    
+        T1 = T1.reshape(shape)
+        T1 = T1.clip(0, 10000) 
 
-        for INDEX in range(np.size(flat_index)):
-            if flat_index[INDEX] and flat_mask[INDEX]:
-                t1_values[INDEX] = opt.leastsq(self.cost_function, self.initial_t1,
-                                             args=(self.TR1, self.TR2, flat_cos1[INDEX], flat_cos2[INDEX], flat_signal1[INDEX, :], flat_signal2[INDEX, :]))[0]
-
-        return t1_values.reshape(shape).clip(0, 10000)
+        return T1
     
     
     def brain_masking(self):
         
-        if self.arguments.phantom is not True:
+        if self.arguments['phantom'] is not True:
             
-            fsl_brain_masking(self.arguments.gre2_path);
-            filename = os.path.basename(self.arguments.gre2_path)
+            fsl_brain_masking(self.arguments['gre2_path']);
+            filename = os.path.basename(self.arguments['gre2_path'])
             if filename[-3:] == '.gz':
                 filename = filename[:-7]
             else:
                 filename = filename[:-4]
                 
                 
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
 
             mask_path = dst + '/' + filename + '_brain_mask.nii.gz'
             
@@ -250,7 +256,7 @@ class T1_mapping_mpqMRI():
             
         else: 
             
-            mask = threshold_masking(self.arguments.gre1_path, self.arguments.Phantom_mask_threshold_T1mapping);
+            mask = threshold_masking(self.arguments['gre1_path'], self.arguments['Phantom_mask_threshold_T1mapping']);
             
             self.mask = mask
             
@@ -260,9 +266,9 @@ class T1_mapping_mpqMRI():
     
     def corr_for_imperf_spoiling(self):
         
-        spoilinc = self.arguments.spoil_increment
+        spoilinc = self.arguments['spoil_increment']
         
-        if self.arguments.corr_for_imperfect_spoiling:
+        if self.arguments['corr_for_imperfect_spoiling']:
             if spoilinc==50:
                  polyorder=5;
                  P=np.zeros([polyorder+1,polyorder+1]);
@@ -304,44 +310,44 @@ class T1_mapping_mpqMRI():
             corr1 = np.zeros(FA1.shape)
             for k in range(polyorder+1):
                 for l in range(polyorder+1):
-                    corr1 = corr1 + (P[k,l]*(FA1**(k))*(self.arguments.TR1**(l)));
+                    corr1 = corr1 + (P[k,l]*(FA1**(k))*(self.arguments['TR1']**(l)));
                     
 
             corr2 = np.zeros(FA2.shape)
             for k in range(polyorder+1):
                 for l in range(polyorder+1):
-                    corr2 = corr2 + (P[k,l]*(FA2**(k))*(self.arguments.TR2**(l)));
+                    corr2 = corr2 + (P[k,l]*(FA2**(k))*(self.arguments['TR2']**(l)));
             
             
             FA1 = FA1*corr1*np.pi/180
             FA2 = FA2*corr2*np.pi/180
             
-            return FA1, FA2 #in radians
-            
+            return FA1, FA2
+
 
     def coregistration_mGREs(self):
         
-        if self.arguments.coregister_mGREs:
+        if self.arguments['coregister_mGREs']:
             
-            moving_nii = self.arguments.gre1_path
-            fixed_nii = self.arguments.gre2_path
+            moving_nii = self.arguments['gre1_path']
+            fixed_nii = self.arguments['gre2_path']
             matrix_file = fsl_flirt_registration(moving_nii, fixed_nii, dof=6)
             
-            filename1 = os.path.basename(self.arguments.gre1_path)
+            filename1 = os.path.basename(self.arguments['gre1_path'])
             if filename1[-3:] == '.gz':
                 filename1 = filename1[:-7]
             else:
                 filename1 = filename1[:-4]
                 
-            filename2 = os.path.basename(self.arguments.gre2_path)
+            filename2 = os.path.basename(self.arguments['gre2_path'])
             if filename2[-3:] == '.gz':
                 filename2 = filename2[:-7]
             else:
                 filename2 = filename2[:-4]
             
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
             
-            split_all_echoes(self.arguments.gre1_path)
+            split_all_echoes(self.arguments['gre1_path'])
             
             echoes_dict = dict()
             
@@ -349,80 +355,79 @@ class T1_mapping_mpqMRI():
             for i in range(np.shape(self.s1)[-1]):
                 
                 moving_nii = dst + '/' + filename1 + '_%i_echo'%(i+1) + '.nii.gz'
-                fixed_nii = self.arguments.gre2_path
+                fixed_nii = self.arguments['gre2_path']
                 out_path = fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix_file)
                 
                 
                 echoes_dict['se%i_path'%(i+1)] = dst + '/' + out_path + '.nii.gz'
             
-            self.arguments.gre1_path = combine_echoes(arguments = echoes_dict, nechoes = np.shape(self.gre1)[-1])
-                
-        
+            self.arguments['gre1_path'] = combine_echoes(arguments = echoes_dict, nechoes = np.shape(self.s1)[-1])
+            
             
     def run_linear_approach(self, save=True):
         
-        if self.arguments.corr_for_imperfect_spoiling:
+        if self.arguments['corr_for_imperfect_spoiling']:
             
             FA1, FA2 = self.corr_for_imperf_spoiling();
             self.FA1 = FA1
             self.FA2 = FA2
             
-            self.signal1 = self.gre2[..., 0:self.nTE] * np.sin(self.FA1)[..., None]
-            self.signal2 = self.gre1[..., 0:self.nTE] * np.sin(self.FA2)[..., None]
+            self.F1 = self.s2[..., 0:self.nTE] * np.sin(self.FA1)[..., None]
+            self.F2 = self.s1[..., 0:self.nTE] * np.sin(self.FA2)[..., None]
             
-            self.B1_corr_cos1 = np.cos(self.FA1)
-            self.B1_corr_cos2 = np.cos(self.FA2)
+            self.cos1 = np.cos(self.FA1)
+            self.cos2 = np.cos(self.FA2)
             
             if save:
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
+                dst = os.path.split(self.arguments['gre2_path'])[0]
             
-                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments.affine)
+                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments['affine'])
                 
-                name = 'FA1_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA1_map_B1corr_Spoilcorr.nii'
                 
                 FA1_path = dst + '/' + name 
                 nib.save(FA1_nii, FA1_path)
                 
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
+                dst = os.path.split(self.arguments['gre2_path'])[0]
             
-                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments.affine)
+                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments['affine'])
                 
-                name = 'FA2_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA2_map_B1corr_Spoilcorr.nii'
                 
                 FA2_path = dst + '/' + name 
                 nib.save(FA2_nii, FA2_path)
         
-        if self.arguments.coregister_mGREs:
+        if self.arguments['coregister_mGREs']:
             
             self.coregistration_mGREs()
         
-        if self.arguments.masking:
+        if self.arguments['masking']:
             
             self.brain_masking();
             
         
-        gre1 = self.gre1[:,:,:,0]
-        gre2 = self.gre2[:,:,:,0]
+        s1 = self.s1[:,:,:,0]
+        s2 = self.s2[:,:,:,0]
         
         if self.mask is not None:
-    
+
             mask = self.mask
         
         else:
-            mask = np.ones(gre1.shape)
+            mask = np.ones(s1.shape)
         
-        x1 = gre1/np.tan(self.FA1)
-        x2 = gre2/np.tan(self.FA2)
-        y1 = gre1/np.sin(self.FA1)
-        y2 = gre2/np.sin(self.FA2)
+        x1 = s1/np.tan(self.FA1)
+        x2 = s2/np.tan(self.FA2)
+        y1 = s1/np.sin(self.FA1)
+        y2 = s2/np.sin(self.FA1)
         
-        slope = ((y2-y1)/(x2-x1))*mask
+        slope = ((y2 - y1)/(x2-x1))*mask
         
         slope[~np.isfinite(slope)] = 0
         
-        slope[np.isnan(slope)] = 0
+        slope[~np.isnan(slope)] = 0
         
         t1map = (-1*self.TR1)*mask/np.log(slope)
         
@@ -431,28 +436,16 @@ class T1_mapping_mpqMRI():
         
         
         if save:
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
             
-            slope_nii = nib.Nifti1Image(slope, affine = self.arguments.affine)
-            T1_nii = nib.Nifti1Image(t1map, affine = self.arguments.affine)
+            T1_nii = nib.Nifti1Image(t1map, affine = self.arguments['affine'])
             
-            name = 't1map_linear_approach.nii.gz'
+            name = 't1map_linear_approach'
             
             T1_path = dst + '/' + name 
-            slope_path = dst + '/' + 'slope.nii.gz'
             nib.save(T1_nii, T1_path)
-            nib.save(slope_nii, slope_path)
         
         return t1map 
         
-            
-            
-            
-            
-            
-
-            
-            
-            
-    
+        
         

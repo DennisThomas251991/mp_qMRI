@@ -2,7 +2,18 @@
 """
 Created on Sat Jan 20 19:37:38 2024
 
-@author: mmari
+Author info: 
+    Original codes written in MATLAB by: 
+        Prof. Ralf Deichmann, 
+        Brain Imaging Center Frankfurt
+
+    Ported to Python by:
+        Mariem Ghazouani,
+        Institute of Neuroradiology, University Hospital Frankfurt
+        
+Date of completion of version 1 of 'Frankfurt_qMRI' python package:
+    05/06/2024
+    
 """
 import numpy as np
 from ralf_qMRI_conv_3D import ralf_qMRI_conv_3D

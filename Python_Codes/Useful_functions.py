@@ -19,164 +19,63 @@ import subprocess
 import os
 import shutil
 from pathlib import Path
-# import nipype.interfaces.spm as spm
+import nipype.interfaces.spm as spm
 import nibabel as nib
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import resample
-import subprocess
-import os
-import json 
-
-def extract_scaling_parameters(json_file):
-    with open(json_file, 'r') as f:
-        json_data = json.load(f)
-    
-    # Extract the required parameters (rescale slope, rescale intercept, and scale slope)
-    rescale_slope = json_data.get('PhilipsRescaleSlope', 1)  # Default to 1 if not found
-    rescale_intercept = json_data.get('PhilipsRescaleIntercept', 0)  # Default to 0 if not found
-    scale_slope = json_data.get('PhilipsScaleSlope', 1)  # Default to 1 if not found
-    
-    return rescale_slope, rescale_intercept, scale_slope
-
-import subprocess
-
-def reorient_image(input_nifti, output_nifti, new_orientation):
-    """
-    Reorient the NIfTI image using FSL's fslswapdim to preserve header information.
-
-    Parameters
-    ----------
-    input_nifti : str
-        Path to the input NIfTI file.   
-    output_nifti : str
-        Path where the reoriented NIfTI file will be saved.
-    new_orientation : tuple
-        Desired orientation in terms of axes ('x', '-x', 'y', '-y', 'z', '-z').
-        Example: ('x', 'y', 'z') for standard orientation.
-    """
-    command = ['fslswapdim', input_nifti, *new_orientation, output_nifti]
-    subprocess.run(command, check=True)
-
-
-def convert_dicom_to_nifti(dicom_dir, output_dir):
-    """
-    Convert DICOM files in the specified directory to NIfTI format using dcm2niix.
-
-    Parameters:
-    dicom_dir (str): The path to the directory containing DICOM files.
-    output_dir (str): The path to the directory where the converted NIfTI files will be saved.
-
-    This function runs the dcm2niix command to convert DICOM files to NIfTI format.
-    The NIfTI files will be compressed and saved in the output directory.
-    """
-
-    # Check if the input DICOM directory exists
-    if not os.path.exists(dicom_dir):
-        raise FileNotFoundError(f"The specified DICOM directory does not exist: {dicom_dir}")
-
-    # Create the output directory if it does not exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        print(f"Created output directory: {output_dir}")
-
-    # Run the dcm2niix command to convert DICOM to NIfTI
-    try:
-        subprocess.run(['dcm2niix','-x', 'i','-p', 'n', '-z', 'y', '-o', output_dir, dicom_dir], check=True)
-        print(f"Conversion completed. NIfTI files saved in: {output_dir}")
-    except subprocess.CalledProcessError as e:
-        print(f"Error during DICOM to NIfTI conversion: {e}")
-        raise
 
 cwd = os.getcwd()
-def Philips_scaling_correct_MRI_CroGL(file_path, rescale_slope, rescale_intercept, scale_slope):
-    
-    os.chdir(os.path.dirname(file_path))
 
-    data = nib.load(file_path).get_fdata()
-    affine = nib.load(file_path).affine
-    header = nib.load(file_path).header
-    
-    DV = data
-    RS = rescale_slope
-    RI = rescale_intercept
-    SS = scale_slope  
-    FP = DV / (RS * SS)
-    
-    data_mod = FP
-    nii = nib.Nifti1Image(data_mod, affine=affine, header=header)
-    
-    filename = os.path.basename(file_path)
-    
-    if filename[-3:] == '.gz':
-        filename = filename[:-7]
-    else:
-        filename = filename[:-4]
-    
-    nib.save(nii, filename + 'scaling_CORR.nii.gz')
-    
-
-    
-def combine_echoes(arguments, nechoes, save_name = '_'):
+def Bias_field_corr_SPM(file_path):
     """
-    
-
     Parameters
     ----------
-    arguments : dict
-        arguments should be a dict with the individual echoes named as ['se_echonumber_path]'
-    nechoes : int
-        DESCRIPTION.
+    file_path : path to the file to be processed
 
     Returns
     -------
-    path : string
-        
-
+    Processed file with bias field correction applied
     """
     
+    # Define the path for the temporary folder
+    SPM_dirpath = os.path.join(cwd, "SPM_temp")
     
-    file_list = list()
+    # Remove the temporary folder if it exists
+    if os.path.exists(SPM_dirpath):
+        shutil.rmtree(SPM_dirpath)
     
-    for i in range(nechoes):
-        
-        file_list.append(arguments['se%i_path'%(i+1)])
-        
-    nii_list = dict()
-    for i in range(nechoes):
-        
-        nii_list['%i'%i] = nib.load(file_list[i]).get_fdata()
-    for i in range(nechoes):
-        
-        if i == 0:
-            multiple_echoes = nii_list['%i'%i][:,:,:,None]
-            
-        else: 
-            multiple_echoes = np.concatenate([multiple_echoes, 
-                                              nii_list['%i'%i][:,:,:,None]], axis=3)
-        
-    affine = nib.load(file_list[0]).affine
-            
-    nii = nib.Nifti1Image(multiple_echoes, affine = affine)
+    # Create the temporary folder
+    os.mkdir(SPM_dirpath)
     
-    dst = os.path.split(file_list[0])[0]
+    # Copy the input file to the temporary folder
+    src = file_path
+    dst = os.path.join(SPM_dirpath, os.path.basename(file_path))
+    shutil.copy(src, dst)
     
-    nib.save(nii, dst + '/'+ save_name + 'Combined_%i_echoes.nii.gz'%nechoes)
+    # Convert Windows path of data to WSL-compatible path
+    linux_path = dst.replace('\\', '/')
+    if ':' in linux_path:
+        drive_letter, rest = linux_path.split(':', 1)
+        linux_path = f"/mnt/{drive_letter.lower()}/{rest}"
     
-    path = dst + '/' + save_name +'Combined_%i_echoes.nii.gz'%nechoes
-    
-    return path
-    
-
-
-def SPM_segment(data):
     # Define the WSL command with the modified path
-    wsl_command = f" python3 /app/SPM_script.py {data}"
+    wsl_command = f"wsl python3 /mnt/c/spm_linux/script.py {linux_path}"
     
     # Execute the WSL command
     subprocess.run(wsl_command, shell=True)
+    
+    # Copy the processed file back to the original folder
+    processed_file = os.path.join(SPM_dirpath, os.path.basename(file_path))
+    dst = os.path.split(file_path)[0]
+    shutil.copy(processed_file, dst)
+    
+    # Remove the temporary folder
+    shutil.rmtree(SPM_dirpath)
 
+    print("SPM processing completed and files moved back to the original folder.")
 
+    
 # Brain masking with FSL
 def fsl_brain_masking(file_path):
     """
@@ -206,13 +105,16 @@ def fsl_brain_masking(file_path):
         filename = filename[:-7]
     else:
         filename = filename[:-4]
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/FSL_temp/"
     
-    input_path = os.path.join(FSL_dirpath, filename)
-    output_path = os.path.join(FSL_dirpath, filename + '_brain')
+    input_path = wsl_cwd+filename
+    output_path = wsl_cwd+filename + '_brain'
+    #input_path = os.path.join(FSL_dirpath, filename)
+    #output_path = os.path.join(FSL_dirpath, filename + '_brain')
 
     
-    subprocess.run(['bet2', input_path, output_path, '-f', '0.5', '-g', '0', '-m'], check=True)
-    
+    #subprocess.run(['bet2', input_path, output_path, '-f', '0.5', '-g', '0', '-m'], check=True)
+    os.system('wsl -e bash -lic "bet2 %s %s -f 0.5 -g 0 -m"' % (input_path, output_path))
 
     src = os.path.join(cwd, "FSL_temp", filename + '_brain.nii.gz')
     dst = os.path.split(file_path)[0]
@@ -247,10 +149,10 @@ def fsl_fastseg(file_path):
     else:
         filename = filename[:-4]
         
-    
-    input_path = os.path.join(FSL_dirpath,filename+'.nii.gz')
-    
-    subprocess.run(['fast','-b',input_path],check=True)
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/FSL_temp/"
+    input_path = wsl_cwd+filename+'.nii.gz'
+    os.system('wsl -e bash -lic "fast -b %s "'%input_path)
+    #subprocess.run(['fast','-b',input_path],check=True)
     for file in Path(FSL_dirpath).glob('%s*'%filename):
         print('transferred %s' %file)
         src = file
@@ -307,12 +209,12 @@ def fsl_fastseg_B1mapping(file_path):
         filename = filename[:-7]
     else:
         filename = filename[:-4]
-
-    input_path = os.path.join(FSL_dirpath,filename)
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/FSL_temp/"
+    input_path = wsl_cwd+filename
         
     
-    
-    subprocess.run(['fast','-I',str(16),'-l', str(15) ,'-t', str(2) ,'-n', str(5) ,'-b',input_path],check=True)
+    os.system('wsl -e bash -lic "fast -I 16 -l 15 -t 2 -n 5 -b %s "'%input_path)
+    #subprocess.run(['fast','-I',str(16),'-l', str(15) ,'-t', str(2) ,'-n', str(5) ,'-b',input_path],check=True)
     
     for file in Path(FSL_dirpath).glob('%s*'%filename):
         print('transferred %s' %file)
@@ -323,16 +225,12 @@ def fsl_fastseg_B1mapping(file_path):
     shutil.rmtree(FSL_dirpath)   
     
 
-
-
-
-def fsl_flirt_registration(moving_nii, fixed_nii,additional_args=None, dof=6):
-      
+def fsl_flirt_registration(moving_nii, fixed_nii, additional_args=None, dof=6):
     FSL_dirpath =os.path.join(cwd, "FSL_temp")
     if os.path.exists(FSL_dirpath):
         shutil.rmtree(FSL_dirpath)
     
-    os.mkdir(FSL_dirpath)
+    os.mkdir(FSL_dirpath);
     
     src = moving_nii
     dst = os.path.join(cwd, "FSL_temp")
@@ -349,8 +247,8 @@ def fsl_flirt_registration(moving_nii, fixed_nii,additional_args=None, dof=6):
         filename1 = filename1[:-7]
     else:
         filename1 = filename1[:-4]
-    
-    input_path = os.path.join(FSL_dirpath, filename1)
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/FSL_temp/"
+    input_path = wsl_cwd+ filename1
     
     filename2 = os.path.basename(fixed_nii)
     if filename2[-3:] == '.gz':
@@ -358,36 +256,35 @@ def fsl_flirt_registration(moving_nii, fixed_nii,additional_args=None, dof=6):
     else:
         filename2 = filename2[:-4]
         
-    ref_path = os.path.join(FSL_dirpath, filename2)
+    ref_path = wsl_cwd+filename2
     
-    out_path = os.path.join(FSL_dirpath,  filename1 + '_2_' + filename2)
+    out_path = wsl_cwd+ filename1 + '_2_' + filename2
     
-    omat_path =os.path.join(FSL_dirpath,  filename1 + '_2_' + filename2)
+    omat_path =wsl_cwd+filename1 + '_2_' + filename2
     
-
+    
     dof = str(dof)
-  
-     # Construct the base command
-    command = ['flirt', '-in', input_path, '-ref', ref_path, '-out', out_path, '-omat', omat_path, '-dof', dof]
+    
+    # Construct the base command
+    command = f'wsl -e bash -lic "flirt -in {input_path} -ref {ref_path} -out {out_path} -omat {omat_path} -dof {dof}'
     
     # Add additional arguments if provided
     if additional_args:
-        command.extend(additional_args.split())
+        command += f' {additional_args}'
+    
+    command += '"'
     
     # Run the command
-    subprocess.run(command, check=True)
+    os.system(command)
     
-    
-    for file in Path(FSL_dirpath).glob('%s*'%filename1):
-        print('transferred %s' %file)
-        src = file
-        dst = os.path.split(moving_nii)[0]
-        shutil.copy(src, dst)
+    for file in Path(FSL_dirpath).glob(f'{filename1}*'):
+        print(f'transferred {file}')
+        shutil.copy(file, os.path.split(moving_nii)[0])
         
-    shutil.rmtree(FSL_dirpath)   
+    shutil.rmtree(FSL_dirpath)
     
     return os.path.basename(out_path)
-    
+
     
     
     
@@ -423,8 +320,8 @@ def fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix):
         filename1 = filename1[:-7]
     else:
         filename1 = filename1[:-4]
-    
-    input_path = os.path.join(FSL_dirpath,filename1)
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/FSL_temp/"
+    input_path = wsl_cwd+filename1
     
     filename2 = os.path.basename(fixed_nii)
     if filename2[-3:] == '.gz':
@@ -434,16 +331,17 @@ def fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix):
     filename3 = os.path.basename(matrix)
      
          
-    ref_path = os.path.join(FSL_dirpath , filename2)
+    ref_path = wsl_cwd+filename2
      
-    out_path = os.path.join(FSL_dirpath , filename1 + '_2_' + filename2)
+    out_path = wsl_cwd+filename1 + '_2_' + filename2
      
-    mat_path = os.path.join(FSL_dirpath , filename3)
-    command=['flirt', '-in', input_path, '-ref', ref_path, '-out', out_path, '-init', mat_path, '-applyxfm']
-    # Run the command
-    subprocess.run(command, check=True)
-
+    mat_path =wsl_cwd + filename3
    
+  
+   # subprocess.run(['flirt', '-in', input_path, '-ref', ref_path, '-out', out_path, '-init', mat_path, '-applyxfm'], check=True)
+    os.system('wsl -e bash -lic "flirt -in %s -ref %s -out %s\
+              -init %s -applyxfm"'%(input_path, ref_path, out_path, mat_path))
+              
     
     for file in Path(FSL_dirpath).glob('%s*'%filename1):
         print('transferred %s' %file)
@@ -455,6 +353,7 @@ def fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix):
     
 
     return os.path.basename(out_path)
+    
     
     
     
@@ -647,72 +546,10 @@ def split_all_echoes(nifti_file):
     for i in range(n_echoes):
         
         save_nth_echo(nifti_file, i+1)
-def tgv_qsm_Philips(phase, mask, t, f=3.0):
-    """
-    Runs TGV-QSM on a phase image.
-
-    Parameters
-    ----------
-    phase_image : str
-        Path to the phase NIfTI image.
-    mask_image : str
-        Path to the brain mask NIfTI image.
-    te : float
-        Echo time in seconds.
-    field_strength : float
-        Magnetic field strength in Tesla.
-
-    Returns
-    -------
-    qsm_path : str
-        Path to the generated QSM map.
-    """
-    qsm_dirpath = os.path.join(cwd, "QSM_temp")
-    if os.path.exists(qsm_dirpath):
-        shutil.rmtree(qsm_dirpath)
     
-    os.mkdir(qsm_dirpath);
     
-    src = phase
-    dst = qsm_dirpath
-    shutil.copy(src, dst)
     
-    src = mask
-    dst = qsm_dirpath
-    shutil.copy(src, dst)
-    
-    filename = os.path.basename(phase)
-    
-    if filename[-3:] == '.gz':
-        filename = filename[:-7]
-        phase_path = os.path.join(qsm_dirpath , filename + '.nii.gz')
-    else:
-        filename = filename[:-4]
-        phase_path = os.path.join(qsm_dirpath , filename + '.nii')
-    
-    src = qsm_dirpath +'/'+ filename + 'QSM_map_000.nii.gz' 
-    
-    filename = os.path.basename(mask)
-    if filename[-3:] == '.gz':
-        filename = filename[:-7]
-        mask_path = os.path.join(qsm_dirpath , filename + '.nii.gz')
-    else:
-        filename = filename[:-4]
-        mask_path = os.path.join(qsm_dirpath, filename + '.nii')
-        
-    
-    output = 'QSM_map'
-    
-    subprocess.run(['tgv_qsm', '-p', phase_path, '-m', mask_path, '-o', output, '-f', str(f), '-t', str(t)])
-    
-    dst = os.path.split(phase)[0]
-    
-    shutil.copy(src, dst)
-    
-    shutil.rmtree(qsm_dirpath)
-
-    
-def tgv_qsm2(phase, mask, t, f=3.0):
+def tgv_qsm(phase, mask, t, f=3.0):
         
     qsm_dirpath = os.path.join(cwd, "QSM_temp")
     if os.path.exists(qsm_dirpath):
@@ -729,28 +566,29 @@ def tgv_qsm2(phase, mask, t, f=3.0):
     shutil.copy(src, dst)
     
     filename = os.path.basename(phase)
-    
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/QSM_temp/"
     if filename[-3:] == '.gz':
         filename = filename[:-7]
-        phase_path = os.path.join(qsm_dirpath , filename + '.nii.gz')
+        phase_path = os.path.join(wsl_cwd , filename + '.nii.gz')
     else:
         filename = filename[:-4]
-        phase_path = os.path.join(qsm_dirpath , filename + '.nii')
+        phase_path = os.path.join(wsl_cwd , filename + '.nii')
     
     src = qsm_dirpath +'/'+ filename + 'QSM_map_000.nii.gz' 
     
     filename = os.path.basename(mask)
     if filename[-3:] == '.gz':
         filename = filename[:-7]
-        mask_path = os.path.join(qsm_dirpath , filename + '.nii.gz')
+        mask_path = os.path.join(wsl_cwd , filename + '.nii.gz')
     else:
         filename = filename[:-4]
-        mask_path = os.path.join(qsm_dirpath, filename + '.nii')
+        mask_path = os.path.join(wsl_cwd, filename + '.nii')
         
     
     output = 'QSM_map'
     
-    subprocess.run(['tgv_qsm', '-p', phase_path, '-m', mask_path, '-o', output, '-f', str(f), '-t', str(t), '-s'])
+    os.system('wsl -e bash -lic "tgv_qsm -p %s -m %s -o %s -f %f -t %f -s "'%(phase_path, mask_path, output, f, t))
+
     
     dst = os.path.split(phase)[0]
     
@@ -796,65 +634,62 @@ def fit_inversion_recovery(IR_data, TI_times, IE = 1.96, mask=None):
     
 
     return T1, A
+    
 
-def combine_echoes(arguments, nechoes, save_name='_'):
+
+
+
+
+
+def combine_echoes(arguments, nechoes, save_name = '_'):
     """
+    
+
     Parameters
     ----------
     arguments : dict
-        arguments should be a dict with the individual echoes named as ['se_echonumber_path']
+        arguments should be a dict with the individual echoes named as ['se_echonumber_path]'
     nechoes : int
         DESCRIPTION.
-    save_name : str, optional
-        Default is '_'.
+
     Returns
     -------
     path : string
-    """
+        
 
+    """
+    
+    
     file_list = list()
     
-    # Collect paths for the echoes
     for i in range(nechoes):
-        file_path = arguments.get(f'se{i+1}_path', None)
-        if file_path:
-            file_list.append(file_path)
-        else:
-            raise KeyError(f"Missing path for se{i+1}_path")
-    
-    # Verify if files exist
-    for file in file_list:
-        if not os.path.exists(file):
-            raise FileNotFoundError(f"File {file} not found!")
-    print("Loading NIfTI files...")
-
+        
+        file_list.append(arguments['se%i_path'%(i+1)])
+        
     nii_list = dict()
-    
-    # Load the echo files
     for i in range(nechoes):
-        print(f"Loading echo {i+1}: {file_list[i]}")
-        nii_list[f'{i}'] = nib.load(file_list[i]).get_fdata()
-
-    # Combine the echoes into one 4D array
+        
+        nii_list['%i'%i] = nib.load(file_list[i]).get_fdata()
     for i in range(nechoes):
+        
         if i == 0:
-            multiple_echoes = nii_list[f'{i}'][:, :, :, None]
-        else:
-            multiple_echoes = np.concatenate([multiple_echoes, nii_list[f'{i}'][:, :, :, None]], axis=3)
-
+            multiple_echoes = nii_list['%i'%i][:,:,:,None]
+            
+        else: 
+            multiple_echoes = np.concatenate([multiple_echoes, 
+                                              nii_list['%i'%i][:,:,:,None]], axis=3)
+        
     affine = nib.load(file_list[0]).affine
+            
+    nii = nib.Nifti1Image(multiple_echoes, affine = affine)
     
-    # Create the output path
     dst = os.path.split(file_list[0])[0]
-    combined_filename = f'{dst}/{save_name}Combined_{nechoes}_echoes.nii.gz'
     
-    # Save the combined NIfTI file
-    print(f"Saving combined NIfTI file to: {combined_filename}")
-    nii = nib.Nifti1Image(multiple_echoes, affine=affine)
-    nib.save(nii, combined_filename)
+    nib.save(nii, dst + '/'+ save_name + 'Combined_%i_echoes.nii.gz'%nechoes)
     
-    return combined_filename
-
+    path = dst + '/' + save_name +'Combined_%i_echoes.nii.gz'%nechoes
+    
+    return path
     
 
 
@@ -930,83 +765,71 @@ def complex_interpolation(mag_path, pha_path, interpol2shape = [216, 224, 172],
     nib.save(nii_1_2mm_resampled_phase, '%s'%save_name + '_pha.nii.gz')
     
     return path + '/' + '%s'%save_name + '_mag.nii.gz', path + '/' + '%s'%save_name + '_pha.nii.gz'
-def fsl_EPI_distortion_corr(file_path, B0map_path, mydwell = 0.0005, phasedir='y'):
+def fsl_EPI_distortion_corr(file_path, B0map_path, mydwell=0.0005, phasedir='y'):
     """
-    
+    Correct EPI distortion using FSL's fugue tool.
+
     Parameters
     ----------
-    file_path : TYPE
-        DESCRIPTION.
-    B0map_path : TYPE
-        DESCRIPTION.
-    mydwell : TYPE, optional
-        DESCRIPTION. The default is 0.0005.
-    phasedir : TYPE, optional
-        DESCRIPTION. The default is 'y'.
+    file_path : str
+        Path to the EPI image file.
+    B0map_path : str
+        Path to the B0 field map file.
+    mydwell : float, optional
+        The dwell time. Default is 0.0005.
+    phasedir : str, optional
+        Phase encoding direction. Default is 'y'.
 
     Returns
     -------
-    output_name : TYPE
-        DESCRIPTION.
+    output_name : str
+        Path to the corrected output file.
 
     """
+    # Define current working directory
+    cwd = os.getcwd()
+
+    # Create temporary directory for FSL processing
     FSL_dirpath = os.path.join(cwd, "FSL_temp")
-    
     if os.path.exists(FSL_dirpath):
         shutil.rmtree(FSL_dirpath)
     os.mkdir(FSL_dirpath)
 
+    # Copy input files to temporary directory
+    shutil.copy(file_path, FSL_dirpath)
+    shutil.copy(B0map_path, FSL_dirpath)
     
-    src = file_path
-    dst = os.path.join(cwd, "FSL_temp")
- 
-    shutil.copy(src, dst)
-    
-    src = B0map_path
-    dst = os.path.join(cwd, "FSL_temp")
-    shutil.copy(src, dst)
-   
+    # Prepare file paths
     filename = os.path.basename(file_path)
-    if filename[-3:] == '.gz':
+    if filename.endswith('.nii.gz'):
         filename = filename[:-7]
     else:
         filename = filename[:-4]
-     
-    input_path = os.path.join(FSL_dirpath , filename)
-        
+    wsl_cwd = "/mnt/" + cwd[0].lower() + cwd[2:].replace("\\", "/") + "/FSL_temp/"
+    input_path = wsl_cwd + filename
     
     output_name = input_path + '_Corr' + '.nii.gz'
     
-    filename = os.path.basename(B0map_path)
-    if filename[-3:] == '.gz':
-        filename = filename[:-7]
+    B0_filename = os.path.basename(B0map_path)
+    if B0_filename.endswith('.nii.gz'):
+        B0_filename = B0_filename[:-7]
     else:
-        filename = filename[:-4]
+        B0_filename = B0_filename[:-4]
+    B0_path = wsl_cwd + B0_filename
     
-    B0_path = os.path.join(FSL_dirpath , filename)
+    # Run the FSL fugue command
+    command = f'wsl -e bash -lic "fugue -i {input_path} --icorr --dwell={mydwell} --unwarpdir={phasedir} --loadfmap={B0_path} -u {output_name}"'
+    os.system(command)
     
+    # Transfer corrected files back to original directory
+    for file in Path(FSL_dirpath).glob(f'{filename}*'):
+        print(f'transferred {file}')
+        shutil.copy(file, os.path.split(file_path)[0])
     
-    
-    subprocess.run(['fugue','-i', input_path,'--icorr','--dwell={}'.format(mydwell),'--unwarpdir={}'.format(phasedir),'--loadfmap={}'.format(B0_path),
-    '-u', output_name],check=True)
-    
-    filename = os.path.basename(file_path)
-    if filename[-3:] == '.gz':
-        filename = filename[:-7]
-    else:
-        filename = filename[:-4]
-        
-    
-    for file in Path(os.path.join(cwd, "FSL_temp")).glob('%s*'%filename):
-        print('transferred %s' %file)
-        src = file
-        dst = os.path.split(file_path)[0]
-        shutil.copy(src, dst)
-        
+    # Cleanup temporary directory
     shutil.rmtree(FSL_dirpath)
     
     return output_name
-    
 
 def fsl_linear_normalization(moving_nii, fixed_nii, additional_images_list=None, dof=6):
     FSL_dirpath = os.path.join(cwd, "FSL_temp")
@@ -1031,8 +854,8 @@ def fsl_linear_normalization(moving_nii, fixed_nii, additional_images_list=None,
         filename1 = filename1[:-7]
     else:
         filename1 = filename1[:-4]
-    
-    input_path = os.path.join(FSL_dirpath , filename1)
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/FSL_temp/"    
+    input_path = wsl_cwd+ filename1
     
     
     filename2 = os.path.basename(fixed_nii)
@@ -1043,10 +866,10 @@ def fsl_linear_normalization(moving_nii, fixed_nii, additional_images_list=None,
     
     # FSL orient2std
     
-    out_path = os.path.join(FSL_dirpath , filename1 + 'std')
+    out_path =wsl_cwd+filename1 + 'std'
     
-    
-    subprocess.run(['fslreorient2std',input_path,out_path],check=True)
+    os.system('wsl -e bash -lic "fslreorient2std %s %s"'%(input_path, out_path))
+    #subprocess.run(['fslreorient2std',input_path,out_path],check=True)
     if additional_images_list is not None:
         
         for i in additional_images_list:
@@ -1065,24 +888,25 @@ def fsl_linear_normalization(moving_nii, fixed_nii, additional_images_list=None,
             
             out_path_additional = os.path.join(FSL_dirpath , filename_additional + 'std')
             
-            
+            #os.system('wsl -e bash -lic "fslreorient2std %s %s"'%(input_path_additional, out_path_additional))
             subprocess.run(['fslreorient2std',input_path_additional, out_path_additional], check=True)        
             
     input_path = out_path
     
     filename1 = filename1 + 'std'
     
-    ref_path = os.path.join(FSL_dirpath , filename2)
+    ref_path = wsl_cwd+ filename2
     
-    out_path = os.path.join(FSL_dirpath , filename1 + '_2_' + filename2)
+    out_path = wsl_cwd+filename1 + '_2_' + filename2
     
-    omat_path = os.path.join(FSL_dirpath , filename1 + '_2_' + filename2 + '.txt')
+    omat_path = wsl_cwd+filename1 + '_2_' + filename2 + '.txt'
     
     dof = int(dof)
     
     # Come on lets flirt:
-    subprocess.run(['flirt','-in',input_path,'-ref',ref_path,'-out',out_path,'-omat',omat_path,'-dof',dof],check=True)
-   
+    #subprocess.run(['flirt','-in',input_path,'-ref',ref_path,'-out',out_path,'-omat',omat_path,'-dof',dof],check=True)
+    os.system('wsl -e bash -lic "flirt -in %s -ref %s -out %s\
+             # -omat %s -dof %s"'%(input_path, ref_path, out_path, omat_path, dof))
     
     for file in Path(os.path.join(cwd, "FSL_temp")).glob('*'):
         print('transferred %s' %file)
@@ -1147,8 +971,8 @@ def fsl_NON_linear_normalization(moving_nii, fixed_nii, affine_guess, additional
         filename1 = filename1[:-7]
     else:
         filename1 = filename1[:-4]
-    
-    input_path = os.path.join(FSL_dirpath , filename1)
+    wsl_cwd="/mnt/"+cwd[0].lower()+cwd[2:].replace("\\","/")+"/FSL_temp/"   
+    input_path = wsl_cwd+ filename1
     
     
     filename2 = os.path.basename(fixed_nii)
@@ -1159,22 +983,22 @@ def fsl_NON_linear_normalization(moving_nii, fixed_nii, affine_guess, additional
         
     filename3 = os.path.basename(affine_guess)
                     
-    ref_path = os.path.join(FSL_dirpath ,filename2)
+    ref_path = wsl_cwd+filename2
     
-    out_path = os.path.join(FSL_dirpath , filename1 + '_2_' + filename2 + '_my_nonlinear_transf')
+    out_path = wsl_cwd+ filename1 + '_2_' + filename2 + '_my_nonlinear_transf'
     
-    affine_path = os.path.join(FSL_dirpath , filename3)
+    affine_path = wsl_cwd+filename3
     
     
     # Come on lets FNIRT:
-    subprocess.run(['fnirt','--ref=',ref_path,'--in=',input_path,'--aff',affine_path,'--cout=',out_path],check=True)
-    
+    #subprocess.run(['fnirt','--ref=',ref_path,'--in=',input_path,'--aff',affine_path,'--cout=',out_path],check=True)
+    os.system('wsl -e bash -lic "fnirt --ref=%s --in=%s --aff=%s --cout=%s"'%(ref_path, input_path, affine_path, out_path))
     
     warp_path = out_path
     
-    out_path = os.path.join(FSL_dirpath , filename1 + '_2_' + filename2 + '_Non_Linear_Normalized')
-    subprocess.run(['applywarp','--in=',input_path,'--ref=',ref_path,'--out=',out_path,'--warp=',warp_path],check=True)
-    
+    out_path = wsl_cwd+ filename1 + '_2_' + filename2 + '_Non_Linear_Normalized'
+    #subprocess.run(['applywarp','--in=',input_path,'--ref=',ref_path,'--out=',out_path,'--warp=',warp_path],check=True)
+    os.system('wsl -e bash -lic "applywarp --in=%s --ref=%s --out=%s --warp=%s"'%(input_path, ref_path, out_path, warp_path))
     
     if additional_images_list is not None:
         
@@ -1190,11 +1014,11 @@ def fsl_NON_linear_normalization(moving_nii, fixed_nii, affine_guess, additional
             else:
                 filename_additional = filename_additional[:-4]
             
-            input_path_additional = os.path.join(FSL_dirpath , filename_additional)
+            input_path_additional = wsl_cwd+ filename_additional
             
-            out_path_additional = os.path.join(FSL_dirpath , filename_additional +  '_2_' + filename2 + '_Non_Linear_Normalized')
-            subprocess.run(['applywarp','--in=',input_path_additional,'--ref=',ref_path,'--out=',out_path_additional,'--warp=',warp_path],check=True)
-            
+            out_path_additional = wsl_cwd+ filename_additional +  '_2_' + filename2 + '_Non_Linear_Normalized'
+            #subprocess.run(['applywarp','--in=',input_path_additional,'--ref=',ref_path,'--out=',out_path_additional,'--warp=',warp_path],check=True)
+            os.system('wsl -e bash -lic "applywarp --in=%s --ref=%s --out=%s --warp=%s"'%(input_path_additional, ref_path, out_path_additional, warp_path))
    
     for file in Path(os.path.join(cwd, "FSL_temp")).glob('*'):
         print('transferred %s' %file)

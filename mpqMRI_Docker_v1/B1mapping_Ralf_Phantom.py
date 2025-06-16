@@ -2,9 +2,22 @@
 """
 Created on Fri Dec  1 10:38:21 2023
 
-@author: mmari
-"""
+Author info: 
+    Original codes written in MATLAB by: 
+        Prof. Ralf Deichmann, 
+        Brain Imaging Center Frankfurt
 
+    Modified for Fast B1 mapping with mp_qMRI by:
+        Dennis C. Thomas,
+        Institute of Neuroradiology, University Hospital Frankfurt
+        
+    Ported to Python by:
+        Mariem Ghazouani,
+        Institute of Neuroradiology, University Hospital Frankfurt
+        
+Date of completion of version 1 of 'Frankfurt_qMRI' python package:
+    05/06/2024
+"""
 import os
 import numpy as np
 import nibabel as nib

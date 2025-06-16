@@ -1,8 +1,18 @@
+# Use official Ubuntu base image
 FROM ubuntu:20.04
 
 # Set environment variables
-ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PATH=/opt/conda/bin:$PATH
-ENV DEBIAN_FRONTEND="noninteractive"
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PATH=/opt/conda/bin:$PATH DEBIAN_FRONTEND=noninteractive
+
+# Install required packages
+RUN apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends \
+        wget bzip2 ca-certificates curl git unzip \
+        python3 python3-pip python3-dev libxml2 libxml2-dev libxslt1-dev \
+        dcm2niix xorg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 # Install required packages
 RUN apt-get update --fix-missing && \
@@ -30,22 +40,19 @@ RUN python setup.py install && \
     cd test_data && \
     tgv_qsm  -p epi3d_test_phase.nii.gz -m epi3d_test_mask.nii.gz -f 2.89 -t 0.027 -o epi3d_test_QSM
 
-# Set environment variables for FSL
-ENV FSLDIR="/usr/local/fsl"
-ENV PATH="${FSLDIR}/bin:${PATH}"
-
-# Install FSL dependencies
-RUN apt-get update && \
-    apt-get install -y wget
+# Proceed with the rest of your installation steps
+RUN apt-get update && apt-get install -y wget
 
 # Copy fslinstaller.py into the Docker image
 COPY fslinstaller.py /app
+# Set environment variables for FSL
+ENV FSLDIR="/usr/local/fsl"
+ENV PATH="${FSLDIR}/bin:${PATH}"
 
 # Run FSL installer script
 RUN python /app/fslinstaller.py -d ${FSLDIR} 
 
 # Verify FSL installation
-# Echo the FSL configuration command into ~/.bashrc and source it
 RUN echo ". ${FSLDIR}/etc/fslconf/fsl.sh" >> ~/.bashrc && \
     . ${FSLDIR}/etc/fslconf/fsl.sh
 ENV FSLOUTPUTTYPE=NIFTI_GZ
@@ -56,27 +63,10 @@ COPY Test_data.nii.gz /app
 # Verify FSL installation by checking the header information of the copied NIFTI file
 RUN fslhd /app/Test_data.nii.gz
 
-# Update package lists and install Python 3 and pip
-RUN apt-get update --fix-missing && \
-    apt-get install -y python3 python3-pip
-
-# Create a new layer for installing Python packages
-RUN pip3 install --no-cache-dir nibabel nipype scipy scikit-image
-
-# Installing MCR for SPM:
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
-     unzip xorg wget \
- && apt-get clean \
- && rm -rf \
-     /tmp/hsperfdata* \
-     /var/*/apt/*/partial \
-     /var/lib/apt/lists/* \
-     /var/log/apt/term*
-
-# Install MATLAB MCR in /opt/mcr/
-ENV MATLAB_VERSION R2019b
-ENV MCR_VERSION v97
-ENV MCR_UPDATE 9
+# Install MATLAB Runtime (MCR)
+ENV MATLAB_VERSION=R2019b
+ENV MCR_VERSION=v97
+ENV MCR_UPDATE=9
 RUN mkdir /opt/mcr_install \
  && mkdir /opt/mcr \
  && wget --progress=bar:force -P /opt/mcr_install https://ssd.mathworks.com/supportfiles/downloads/${MATLAB_VERSION}/Release/${MCR_UPDATE}/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_${MATLAB_VERSION}_Update_${MCR_UPDATE}_glnxa64.zip \
@@ -85,11 +75,11 @@ RUN mkdir /opt/mcr_install \
  && rm -rf /opt/mcr_install /tmp/*
 
 # Install SPM Standalone in /opt/spm12/
-ENV SPM_VERSION 12
-ENV SPM_REVISION r7771
-ENV LD_LIBRARY_PATH /opt/mcr/${MCR_VERSION}/runtime/glnxa64:/opt/mcr/${MCR_VERSION}/bin/glnxa64:/opt/mcr/${MCR_VERSION}/sys/os/glnxa64:/opt/mcr/${MCR_VERSION}/sys/opengl/lib/glnxa64:/opt/mcr/${MCR_VERSION}/extern/bin/glnxa64
-ENV MCR_INHIBIT_CTF_LOCK 1
-ENV SPM_HTML_BROWSER 0
+ENV SPM_VERSION=12
+ENV SPM_REVISION=r7771
+ENV LD_LIBRARY_PATH=/opt/mcr/${MCR_VERSION}/runtime/glnxa64:/opt/mcr/${MCR_VERSION}/bin/glnxa64:/opt/mcr/${MCR_VERSION}/sys/os/glnxa64:/opt/mcr/${MCR_VERSION}/sys/opengl/lib/glnxa64:/opt/mcr/${MCR_VERSION}/extern/bin/glnxa64
+ENV MCR_INHIBIT_CTF_LOCK=1
+ENV SPM_HTML_BROWSER=0
 # Running SPM once with "function exit" tests the succesfull installation *and*
 # extracts the ctf archive which is necessary if singularity is going to be
 # used later on, because singularity containers are read-only.
@@ -100,10 +90,13 @@ RUN wget --no-check-certificate --progress=bar:force -P /opt https://www.fil.ion
  && /opt/spm${SPM_VERSION}/spm${SPM_VERSION} function exit \
  && chmod +x /opt/spm${SPM_VERSION}/spm${SPM_VERSION}
 
-# Configure entry point
-#ENTRYPOINT ["/opt/spm12/spm12"]
-#CMD ["--help"]# Copy the entire project directory into the Docker image
-COPY . /app
-# Unset the DEBIAN_FRONTEND environment variable
-ENV DEBIAN_FRONTEND=
 
+# Create a new layer for installing Python packages
+RUN pip3 install --no-cache-dir nibabel nipype scipy scikit-image
+
+# Set working directory
+WORKDIR /app
+COPY . /app
+# Restore environment
+ENV DEBIAN_FRONTEND=
+ENTRYPOINT ["python", "script_run.py"]

@@ -69,21 +69,21 @@ class T1_mapping_mpqMRI():
         """
         
         self.arguments = arguments
-        self.gre1 = arguments.gre_list[0]
-        self.gre2 = arguments.gre_list[1]
+        self.gre1 = arguments['gre_list'][0]
+        self.gre2 = arguments['gre_list'][1]
         
-        self.FA_list = arguments.FA_list
+        self.FA_list = arguments['FA_list']
         
         self.b1plus = B1map_coreg
-        self.TR_list = arguments.TR_list
+        self.TR_list = arguments['TR_list']
         
-        self.nTE = arguments.nTE
-        self.slices = arguments.slices 
+        self.nTE = arguments['nTE']
+        self.slices = arguments['slices'] 
         
-        self.shape = np.shape(arguments.b1plus)
-        self.index = np.ones(np.shape(arguments.b1plus))
+        self.shape = np.shape(arguments['b1plus'])
+        self.index = np.ones(np.shape(arguments['b1plus']))
         
-        self.initial_t1 = arguments.x0
+        self.initial_t1 = arguments['x0']
         
         self.signal1 = self.gre2[..., 0:self.nTE] * np.sin(self.b1plus*self.FA_list[0])[..., None]
         self.signal2 = self.gre1[..., 0:self.nTE] * np.sin(self.b1plus*self.FA_list[1])[..., None]
@@ -91,15 +91,15 @@ class T1_mapping_mpqMRI():
         self.B1_corr_cos1 = np.cos(self.b1plus*self.FA_list[0])
         self.B1_corr_cos2 = np.cos(self.b1plus*self.FA_list[1])
         
-        self.TR1 = arguments.TR_list[0]
-        self.TR2 = arguments.TR_list[1]
+        self.TR1 = arguments['TR_list'][0]
+        self.TR2 = arguments['TR_list'][1]
         
              
         
     def run(self, save = True):
         
         
-        if self.arguments.corr_for_imperfect_spoiling:
+        if self.arguments['corr_for_imperfect_spoiling']:
             
             FA1, FA2 = self.corr_for_imperf_spoiling();
             self.FA1 = FA1
@@ -113,25 +113,25 @@ class T1_mapping_mpqMRI():
             
             if save:
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
+                dst = os.path.split(self.arguments['gre2_path'])[0]
             
-                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments.affine)
+                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments['affine'])
                 
-                name = 'FA1_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA1_map_B1corr_Spoilcorr.nii'
                 
                 FA1_path = dst + '/' + name 
                 nib.save(FA1_nii, FA1_path)
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
+                dst = os.path.split(self.arguments['gre2_path'])[0]
                 
-                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments.affine)
+                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments['affine'])
                 
-                name = 'FA2_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA2_map_B1corr_Spoilcorr.nii'
                 
                 FA2_path = dst + '/' + name 
                 nib.save(FA2_nii, FA2_path)
         
-        if self.arguments.coregister_mGREs:
+        if self.arguments['coregister_mGREs']:
             
             self.coregistration_mGREs()
             
@@ -147,7 +147,7 @@ class T1_mapping_mpqMRI():
 
         print(f"Start Time = {datetime.now().strftime('%H:%M:%S')}")
 
-        if self.arguments.masking:
+        if self.arguments['masking']:
             
             self.brain_masking();
             
@@ -163,13 +163,13 @@ class T1_mapping_mpqMRI():
         print(f"Stop Time = {datetime.now().strftime('%H:%M:%S')}")
         
         if save:
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
             
-            T1_nii = nib.Nifti1Image(self.T1, affine = self.arguments.affine)
+            T1_nii = nib.Nifti1Image(self.T1, affine = self.arguments['affine'])
             
-            name = 'T1_map_B1corr_%s_Spoilcorr_%s_%iechoes.nii.gz'%(self.arguments.b1plus_mapping, 
-                                                       self.arguments.corr_for_imperfect_spoiling,
-                                                       self.arguments.nTE)
+            name = 'T1_map_B1corr_%s_Spoilcorr_%s_%iechoes.nii'%(self.arguments['b1plus_mapping'], 
+                                                       self.arguments['corr_for_imperfect_spoiling'],
+                                                       self.arguments['nTE'])
             
             T1_path = dst + '/' + name 
             nib.save(T1_nii, T1_path)
@@ -230,17 +230,17 @@ class T1_mapping_mpqMRI():
     
     def brain_masking(self):
         
-        if self.arguments.phantom is not True:
+        if self.arguments['phantom'] is not True:
             
-            fsl_brain_masking(self.arguments.gre2_path);
-            filename = os.path.basename(self.arguments.gre2_path)
+            fsl_brain_masking(self.arguments['gre2_path']);
+            filename = os.path.basename(self.arguments['gre2_path'])
             if filename[-3:] == '.gz':
                 filename = filename[:-7]
             else:
                 filename = filename[:-4]
                 
                 
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
 
             mask_path = dst + '/' + filename + '_brain_mask.nii.gz'
             
@@ -250,7 +250,7 @@ class T1_mapping_mpqMRI():
             
         else: 
             
-            mask = threshold_masking(self.arguments.gre1_path, self.arguments.Phantom_mask_threshold_T1mapping);
+            mask = threshold_masking(self.arguments['gre1_path'], self.arguments['Phantom_mask_threshold_T1mapping']);
             
             self.mask = mask
             
@@ -260,9 +260,9 @@ class T1_mapping_mpqMRI():
     
     def corr_for_imperf_spoiling(self):
         
-        spoilinc = self.arguments.spoil_increment
+        spoilinc = self.arguments['spoil_increment']
         
-        if self.arguments.corr_for_imperfect_spoiling:
+        if self.arguments['corr_for_imperfect_spoiling']:
             if spoilinc==50:
                  polyorder=5;
                  P=np.zeros([polyorder+1,polyorder+1]);
@@ -304,13 +304,13 @@ class T1_mapping_mpqMRI():
             corr1 = np.zeros(FA1.shape)
             for k in range(polyorder+1):
                 for l in range(polyorder+1):
-                    corr1 = corr1 + (P[k,l]*(FA1**(k))*(self.arguments.TR1**(l)));
+                    corr1 = corr1 + (P[k,l]*(FA1**(k))*(self.arguments['TR1']**(l)));
                     
 
             corr2 = np.zeros(FA2.shape)
             for k in range(polyorder+1):
                 for l in range(polyorder+1):
-                    corr2 = corr2 + (P[k,l]*(FA2**(k))*(self.arguments.TR2**(l)));
+                    corr2 = corr2 + (P[k,l]*(FA2**(k))*(self.arguments['TR2']**(l)));
             
             
             FA1 = FA1*corr1*np.pi/180
@@ -321,27 +321,27 @@ class T1_mapping_mpqMRI():
 
     def coregistration_mGREs(self):
         
-        if self.arguments.coregister_mGREs:
+        if self.arguments['coregister_mGREs']:
             
-            moving_nii = self.arguments.gre1_path
-            fixed_nii = self.arguments.gre2_path
+            moving_nii = self.arguments['gre1_path']
+            fixed_nii = self.arguments['gre2_path']
             matrix_file = fsl_flirt_registration(moving_nii, fixed_nii, dof=6)
             
-            filename1 = os.path.basename(self.arguments.gre1_path)
+            filename1 = os.path.basename(self.arguments['gre1_path'])
             if filename1[-3:] == '.gz':
                 filename1 = filename1[:-7]
             else:
                 filename1 = filename1[:-4]
                 
-            filename2 = os.path.basename(self.arguments.gre2_path)
+            filename2 = os.path.basename(self.arguments['gre2_path'])
             if filename2[-3:] == '.gz':
                 filename2 = filename2[:-7]
             else:
                 filename2 = filename2[:-4]
             
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
             
-            split_all_echoes(self.arguments.gre1_path)
+            split_all_echoes(self.arguments['gre1_path'])
             
             echoes_dict = dict()
             
@@ -349,19 +349,19 @@ class T1_mapping_mpqMRI():
             for i in range(np.shape(self.s1)[-1]):
                 
                 moving_nii = dst + '/' + filename1 + '_%i_echo'%(i+1) + '.nii.gz'
-                fixed_nii = self.arguments.gre2_path
+                fixed_nii = self.arguments['gre2_path']
                 out_path = fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix_file)
                 
                 
                 echoes_dict['se%i_path'%(i+1)] = dst + '/' + out_path + '.nii.gz'
             
-            self.arguments.gre1_path = combine_echoes(arguments = echoes_dict, nechoes = np.shape(self.gre1)[-1])
+            self.arguments['gre1_path'] = combine_echoes(arguments = echoes_dict, nechoes = np.shape(self.gre1)[-1])
                 
         
             
     def run_linear_approach(self, save=True):
         
-        if self.arguments.corr_for_imperfect_spoiling:
+        if self.arguments['corr_for_imperfect_spoiling']:
             
             FA1, FA2 = self.corr_for_imperf_spoiling();
             self.FA1 = FA1
@@ -375,30 +375,30 @@ class T1_mapping_mpqMRI():
             
             if save:
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
+                dst = os.path.split(self.arguments['gre2_path'])[0]
             
-                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments.affine)
+                FA1_nii = nib.Nifti1Image(FA1, affine = self.arguments['affine'])
                 
-                name = 'FA1_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA1_map_B1corr_Spoilcorr.nii'
                 
                 FA1_path = dst + '/' + name 
                 nib.save(FA1_nii, FA1_path)
                 
                 
-                dst = os.path.split(self.arguments.gre2_path)[0]
+                dst = os.path.split(self.arguments['gre2_path'])[0]
             
-                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments.affine)
+                FA2_nii = nib.Nifti1Image(FA2, affine = self.arguments['affine'])
                 
-                name = 'FA2_map_B1corr_Spoilcorr.nii.gz'
+                name = 'FA2_map_B1corr_Spoilcorr.nii'
                 
                 FA2_path = dst + '/' + name 
                 nib.save(FA2_nii, FA2_path)
         
-        if self.arguments.coregister_mGREs:
+        if self.arguments['coregister_mGREs']:
             
             self.coregistration_mGREs()
         
-        if self.arguments.masking:
+        if self.arguments['masking']:
             
             self.brain_masking();
             
@@ -431,22 +431,19 @@ class T1_mapping_mpqMRI():
         
         
         if save:
-            dst = os.path.split(self.arguments.gre2_path)[0]
+            dst = os.path.split(self.arguments['gre2_path'])[0]
             
-            slope_nii = nib.Nifti1Image(slope, affine = self.arguments.affine)
-            T1_nii = nib.Nifti1Image(t1map, affine = self.arguments.affine)
+            slope_nii = nib.Nifti1Image(slope, affine = self.arguments['affine'])
+            T1_nii = nib.Nifti1Image(t1map, affine = self.arguments['affine'])
             
-            name = 't1map_linear_approach.nii.gz'
+            name = 't1map_linear_approach'
             
             T1_path = dst + '/' + name 
-            slope_path = dst + '/' + 'slope.nii.gz'
+            slope_path = dst + '/' + 'slope'
             nib.save(T1_nii, T1_path)
             nib.save(slope_nii, slope_path)
         
         return t1map 
-        
-            
-            
             
             
             

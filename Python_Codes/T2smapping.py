@@ -2,7 +2,13 @@
 """
 Created on Thu Mar  2 16:17:47 2023
 
-@author: denni
+Author:
+    Dennis C. Thomas
+    Institute of Neuroradiology University Hospital Frankfurt
+    
+Date of completion of version 1 of 'Frankfurt_qMRI' python package:
+    05/06/2024
+    
 """
 
 import nibabel as nib
@@ -15,12 +21,12 @@ class t2s_map_mpqMRI():
     def __init__(self, arguments):
         
         self.arguments = arguments
-        self.nechoes = len(arguments.echotimes)
+        self.nechoes = len(arguments['echotimes'])
         
     def run(self, nechoes=6, save=True):
-            
-        gre1 = nib.load(self.arguments.gre1_path).get_fdata()
-        gre2 = nib.load(self.arguments.gre2_path).get_fdata()
+        
+        gre1 = nib.load(self.arguments['gre1_path']).get_fdata()
+        gre2 = nib.load(self.arguments['gre2_path']).get_fdata()
         
         mask1 = self.masking()[0]
         mask2 = self.masking()[1]
@@ -39,14 +45,14 @@ class t2s_map_mpqMRI():
         gre1 = np.reshape(log_gre1, (np.size(log_gre1)//np.shape(log_gre1)[-1], np.shape(log_gre1)[-1]))
         gre2 = np.reshape(log_gre2, (np.size(log_gre2)//np.shape(log_gre2)[-1], np.shape(log_gre2)[-1]))
         
-        M0_gre1, t2s_gre1 = self.linear_fit(self.arguments.echotimes, gre1)
+        M0_gre1, t2s_gre1 = self.linear_fit(self.arguments['echotimes'], gre1)
         M0_gre1 = np.exp(M0_gre1)
         T2Star_gre1  = -1./ t2s_gre1
         T2Star_gre1[T2Star_gre1 < 0] = 1000  # Set negative values to 0
         T2Star_gre1[T2Star_gre1 > 1000] = 1000  # Set values > 1000 to 1000
         T2Star_gre1[np.isnan(T2Star_gre1)] = 0  # Set NaN values to 0
         
-        M0_gre2, t2s_gre2 = self.linear_fit(self.arguments.echotimes, gre2)
+        M0_gre2, t2s_gre2 = self.linear_fit(self.arguments['echotimes'], gre2)
         M0_gre2 = np.exp(M0_gre2)
         T2Star_gre2  = -1./ t2s_gre2
         T2Star_gre2[T2Star_gre2 < 0] = 1000  # Set negative values to 0
@@ -61,7 +67,7 @@ class t2s_map_mpqMRI():
         
         gre12 = gre1 + gre2
         
-        M0_gre12, t2s_gre12 = self.linear_fit(self.arguments.echotimes, gre12)
+        M0_gre12, t2s_gre12 = self.linear_fit(self.arguments['echotimes'], gre12)
         M0_gre12 = np.exp(M0_gre12)
         T2Star_gre12  = -2. / t2s_gre12  # Multiplied by 2
         T2Star_gre12[T2Star_gre12 < 0] = 1000  # Set negative values to 0
@@ -93,11 +99,10 @@ class t2s_map_mpqMRI():
         
         return M0_gre1, M0_gre2, M0_avg, avg_M0, T2Star_gre1, T2Star_gre2, T2Star_avg, avg_T2Star
 
-    
     def save(self):
         
-        affine1 = nib.load(self.arguments.gre1_path).affine
-        affine2 = nib.load(self.arguments.gre2_path).affine
+        affine1 = nib.load(self.arguments['gre1_path']).affine
+        affine2 = nib.load(self.arguments['gre2_path']).affine
         
         M0_gre1 = self.M0_gre1
         M0_gre2 = self.M0_gre2
@@ -121,16 +126,16 @@ class t2s_map_mpqMRI():
         avg_M0_nii = nib.Nifti1Image(avg_M0, affine = affine1)
         
         
-        dst = os.path.split(self.arguments.gre2_path)[0]
-        T2Star_gre1_path = dst + '/' + 'T2Star_gre1.nii.gz'
-        T2Star_gre2_path = dst + '/' + 'T2Star_gre2.nii.gz'
-        T2Star_avg_path = dst + '/' + 'T2Star_avg.nii.gz'
-        avg_T2Star_path = dst + '/' + 'avg_T2Star.nii.gz'
+        dst = os.path.split(self.arguments['gre2_path'])[0]
+        T2Star_gre1_path = dst + '/' + 'T2Star_gre1.nii'
+        T2Star_gre2_path = dst + '/' + 'T2Star_gre2.nii'
+        T2Star_avg_path = dst + '/' + 'T2Star_avg.nii'
+        avg_T2Star_path = dst + '/' + 'avg_T2Star.nii'
         
-        M0_gre1_path = dst + '/' + 'M0_gre1.nii.gz'
-        M0_gre2_path = dst + '/' + 'M0_gre2.nii.gz'
-        M0_avg_path = dst + '/' + 'M0_avg.nii.gz'
-        avg_M0_path = dst + '/' + 'avg_M0.nii.gz'
+        M0_gre1_path = dst + '/' + 'M0_gre1.nii'
+        M0_gre2_path = dst + '/' + 'M0_gre2.nii'
+        M0_avg_path = dst + '/' + 'M0_avg.nii'
+        avg_M0_path = dst + '/' + 'avg_M0.nii'
         
         nib.save(T2Star_gre1_nii, T2Star_gre1_path)
         nib.save(T2Star_gre2_nii, T2Star_gre2_path)
@@ -158,23 +163,23 @@ class t2s_map_mpqMRI():
     
     def masking(self):
         
-        fsl_brain_masking(self.arguments.gre1_path)
-        fsl_brain_masking(self.arguments.gre2_path)
+        fsl_brain_masking(self.arguments['gre1_path'])
+        fsl_brain_masking(self.arguments['gre2_path'])
         
-        filename1 = os.path.basename(self.arguments.gre1_path)
+        filename1 = os.path.basename(self.arguments['gre1_path'])
         if filename1[-3:] == '.gz':
             filename1 = filename1[:-7]
         else:
             filename1 = filename1[:-4]
             
-        filename2 = os.path.basename(self.arguments.gre1_path)
+        filename2 = os.path.basename(self.arguments['gre1_path'])
         if filename2[-3:] == '.gz':
             filename2 = filename2[:-7]
         else:
             filename2 = filename2[:-4]
             
-        dst1 = os.path.split(self.arguments.gre1_path)[0]
-        dst2 = os.path.split(self.arguments.gre2_path)[0]
+        dst1 = os.path.split(self.arguments['gre1_path'])[0]
+        dst2 = os.path.split(self.arguments['gre2_path'])[0]
 
         mask_path1 = dst1 + '/' + filename1 + '_brain_mask.nii.gz'
         mask_path2 = dst2 + '/' + filename2 + '_brain_mask.nii.gz'

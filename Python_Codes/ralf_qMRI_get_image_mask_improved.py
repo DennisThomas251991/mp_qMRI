@@ -41,10 +41,9 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
     # Get size of vol:
     mysize = np.array(vol.shape)
     # The size of the cuboids is 1/8 of the size of vol:
-    # Check with Dennis it is changed in his codes but not in my old ones 
-    sz1 = round(mysize[0] / 5)
-    sz2 = round(mysize[1] / 5)
-    sz3 = round(mysize[2] / 5)
+    sz1 = round(mysize[0] / 8)
+    sz2 = round(mysize[1] / 8)
+    sz3 = round(mysize[2] / 8)
 
   # Empty object for data from corners:
     corners = np.zeros((sz1, sz2, sz3, 8),dtype=vol.dtype)
@@ -77,7 +76,6 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
         datared = data[data < (mymean + mystd)]
         # Since datared is without outliers: use maximum value for mylim(i):
         mylim[i] = np.max(datared)
-    
     # One or more entries in mylim may have high values, e.g. if there is object signal in one or more of the corners
     # To remove these outliers, get the median of values in mylim:
     mymedian = np.median(mylim)
@@ -86,15 +84,14 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
     
     # This is a temporary mask: remove all data with values up to limit:
     mmtemp = (vol > limit).astype(int)
-    
     # We now derive a weighting factor for reducing the intensity of noisy data in vol
     # Convolve mmtemp with a 3x3x3 kernel to get a smooth weighting function:
     myweight = ralf_qMRI_conv_3D.ralf_qMRI_conv_3D(mmtemp, np.ones((3, 3, 3)))
-
     myweight = myweight * (myweight >= 0)
-    
     # Derive vol0 where noise is reduced:
     vol0 = vol * myweight
+
+    np.save('vol0', vol0)
 
     # In vol0, outer noise should be suppressed to a certain degree
     # The following parts work on vol0, rather than vol
@@ -105,7 +102,6 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
     # From this, the main radii of the ellipsoid can be derived
     # Get mass of vol0:
     mass = np.sum(vol0)
-
     # Get 3 objects containing the coordinates in x, y, and z direction:
     xx, yy, zz = np.meshgrid(np.arange(1, mysize[0] + 1), np.arange(1, mysize[1] + 1), np.arange(1, mysize[2] + 1), indexing='ij')
     # Get the center of mass for all 3 directions:
@@ -114,7 +110,6 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
     spz = np.round(np.sum(vol0 * zz / mass),4)
     # Transfrom coordinates so center of mass has coordinates (0,0,0):
     xx, yy, zz = xx - spx, yy - spy, zz - spz
-
     #  Get the moments of inertia when rotating the ellipsoid around the x, y, or z axis:
     Ix = np.round(np.sum(vol0 * (yy**2 + zz**2)),4)
     Iy = np.round(np.sum(vol0 * (xx**2 + zz**2)),4)
@@ -123,16 +118,13 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
     aa = max(np.sqrt(5 / 2 / mass * max(Iz + Iy - Ix, 0)), 1)
     bb = max(np.sqrt(5 / 2 / mass * max(Iz + Ix - Iy, 0)), 1)
     cc = max(np.sqrt(5 / 2 / mass * max(Ix + Iy - Iz, 0)), 1)
-
     # Now obtain a mask denoting this ellipsoid:
     mm_ellipsoid =((xx / aa)**2 + (yy / bb)**2 + (zz / cc)**2) <= 1
-  
-    # PART 3
+
     # Collect non-zero data of vol0 outside mm_ellipsoid:    
     # Extract values based on indices
 
     data = vol0[(vol0 > 0) & (mm_ellipsoid == 0)]
-    
 
 
 
@@ -142,14 +134,10 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
     for _ in range(5):
         mymean, mystd = np.mean(data), np.std(data)
         data = data[data < mymean + level * mystd]
-    
     # Upper noise limit:
     limit = np.max(data)
-    
-
     # This is the start mask: remove all data with values up to limit:
     mmstart = (vol0 > limit)
-    
 
     # PART 4
     # PART 4a:Remove isolated small areas in mmstart (mainly isolated pixels)
@@ -157,13 +145,11 @@ def ralf_qMRI_get_image_mask_improved(vol,level=4,max_holesize=0):
     kernel = np.ones((3,3,3))
     kernel[1,1,1]=0
     # Get the number of non-zero nearest neighbours for each pixel:
-    numneighbours = ralf_qMRI_conv_3D.ralf_qMRI_conv_3D(mmstart.astype(int),kernel)
-    
+    numneighbours = np.round(ralf_qMRI_conv_3D.ralf_qMRI_conv_3D(mmstart.astype(int),kernel))
     # leave only pixels where numneighbours is at least 25% of the kernel volume:
     mminterim = mmstart * (numneighbours >= 0.25 * np.sum(kernel))
-   
     mminterim=mminterim.astype(int)
-   
+
     # PART 4b: hole filling (only if selected):
     # If no hole filling is added, mminterim is already the final mask:
     if max_holesize == 0:

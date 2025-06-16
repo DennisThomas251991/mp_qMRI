@@ -1,33 +1,120 @@
-Usage: docker run -it --name mpqMRI -v "path/to/input_folder:/app/input" mpqmri python3 /app/script_run.py [OPTIONS]
+# help.txt
 
-Options:
-  --input-folder                       Path to the input folder containing files to be processed (required)
-  --Bias_field_corr_method             Bias Field correction method [Choices: 'SPM', 'FSL', Default: 'SPM']
-  --FA1                                Flip angle 1 [Default: 5]
-  --FA2                                Flip angle 2 [Default: 32]
-  --TR1                                TR1 in ms [Default: 30]
-  --TR2                                TR2 in ms [Default: 30]
-  --nTE                                Number of echo times to be used for T1-Mapping [Default: 2]
-  --x0                                 x0 value in ms [Default: 1000]
-  --phantom                            Use phantom [Default: False]
-  --masking                            Apply masking [Default: True]
-  --b1plus_mapping                     Perform B1+ mapping [Default: True]
-  --corr_for_imperfect_spoiling        Correct for imperfect spoiling [Default: True]
-  --Phantom_mask_threshold_B1mapping   Threshold for B1 mapping phantom mask [Default: 100]
-  --Phantom_mask_threshold_T1mapping   Threshold for T1 mapping phantom mask [Default: 100]
-  --spoil_increment                    Spoil increment [Default: 50]
-  --slices                             Slices [Default: all]
-  --echotimes                          Echo times [Default: 3.2, 7.7, 12.2, 16.7, 21.2, 25.7]
-  --QSM_average_echoes_qsm             Echoes for QSM averaging [Default: [3, 4, 5, 6]]
-  --coregister_mGREs                   Coregister mGREs [Default: False]
-  --B1map_orientation                  Orientation of the B1 map [Choices: 'Sag', 'Tra', Default: 'Tra']
-  --complex_interpolation              Use complex interpolation [Default: False]
-  --B1_mapping_method                  B1 mapping method [Choices: 'Fast EPI', 'Volz 2010', Default: 'Fast EPI']
-  --QSM_mapping                        Perform QSM mapping [Default: True]
-  --help                               Show this help message and exit
+mp-qMRI Docker Pipeline - User Guide
+====================================
 
-You can change these parameters in two ways:
-1. By providing the parameters directly in the command line, e.g., `docker run -it --name mpqMRI -v "/path/to/input_folder:/app/input" mpqmri python3 /app/script_run.py --input-folder /app/input --FA1 10 --masking False`
-2. By running the command `docker run -it --name mpqMRI -v "/path/to/input_folder:/app/input" mpqmri python3 /app/script_run.py --input-folder /app/input´ without any additional Parameters and you will be asked to change them interactively.
+This tool processes quantitative MRI data and generates B1, T1, T2*, H2O, and QSM maps.
 
+---
 
+## Input Folder Structure
+
+- Place your DICOM or NIfTI files in a folder (e.g., `/path/to/input`).
+- For DICOM, the script will convert to NIfTI automatically.
+
+---
+Input Requirements
+------------------
+
+If your input data is **DICOM**, simply place all DICOM files in the input folder. The pipeline will convert them to NIfTI and organize them automatically.
+
+If your input data is **NIfTI**, the following files must be present in your input folder, with these exact names (either `.nii` or `.nii.gz`):
+
+    M0w_mag.nii / M0w_mag.nii.gz
+    T1w_mag.nii / T1w_mag.nii.gz
+    M0w_pha.nii / M0w_pha.nii.gz
+    T1w_pha.nii / T1w_pha.nii.gz
+    B1_1.nii   / B1_1.nii.gz
+    B1_2.nii   / B1_2.nii.gz
+
+**All six files are required.**  
+If any are missing or named differently, the pipeline will stop with an error.
+
+Place these files directly in your input folder (not in subfolders).
+
+---
+
+For DICOM input, no specific filenames are required.
+
+For NIfTI input, filenames must match exactly as above.
+
+## Command-Line Arguments
+
+- --input-folder (required): Path to the input folder containing files to be processed.
+- --Input_data_type: Input data type: 'DICOM' (default) or 'Nifti'.
+- --Vendor: 'Siemens' (default) or 'Philips'.
+- --Philips_acquisition_method: 'Combined FA acquisition' (default) or 'Separate FA acquisition'.
+- --Bias_field_corr_method: Bias Field correction method 'SPM' (default) or 'FSL'.
+- --FA1, --FA2: Flip angles (default 5, 32).
+- --TR1, --TR2: Repetition times in ms (default 30, 30).
+- --nTE: Number of echo times to be used for T1-Mapping (default 2).
+- --x0: x0 value in ms (default 1000).
+- --phantom: Use phantom (default False)
+- --masking: Apply masking (Default: True)
+- --b1plus_mapping: Perform B1+ mapping (Default: True)
+- --corr_for_imperfect_spoiling: Correct for imperfect spoiling (Default: True)
+- --Phantom_mask_threshold_B1mapping, --Phantom_mask_threshold_T1mapping: Thresholds for B1 and T1 mapping phantom masks(default 100).
+- --spoil_increment: Spoil increment (default 50).
+- --slices: Slices (default all).
+- --echotimes: Echo times in ms (default [3.2, 7.7, 12.2, 16.7, 21.2, 25.7]).
+- --QSM_average_echoes_qsm: Echoes for QSM averaging (default [3, 4, 5, 6]).
+- --coregister_mGREs: Coregister mGREs: True/False (default False).
+- --B1map_orientation: Orientation of the B1 map: 'Sag' or 'Tra' (default 'Tra').
+- --complex_interpolation: Use complex interpolation: True/False (default False).
+- --B1_mapping_method: B1 mapping method: 'Fast EPI' (default) or 'Volz 2010'.
+- --QSM_mapping: Perform QSM mapping: True/False (default True).
+- --help: Show this help message and exit
+
+---
+
+## How to Build the Docker Image
+
+From the folder containing your Dockerfile:
+
+```
+docker build -t mpqmri-pipeline .
+```
+
+---
+
+## How to Run the Pipeline
+
+Replace `/path/to/input` with your actual data folder.
+
+```
+docker run -it --rm -v /path/to/input:/data mpqmri-pipeline --input-folder /data
+```
+
+You can add other arguments as needed, e.g.:
+
+```
+docker run -it --rm -v /path/to/input:/data mpqmri-pipeline --input-folder /data --Vendor Siemens --B1_mapping_method "Fast EPI"
+```
+
+---
+
+## Output
+
+- Results are saved in the input folder under `Niftis/Final_qMRI_maps`.
+- A `map_info.txt` file describes each output map.
+
+---
+
+## Interactive Mode
+
+- The script will prompt you to change parameters if you wish.
+- Press ENTER to accept defaults or type new values.
+
+---
+
+## Getting Help
+
+To see this help inside the container:
+
+```
+docker run --rm mpqmri-pipeline --help
+```
+
+---
+
+For more details, see the source code or contact the developers.
