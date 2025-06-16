@@ -82,7 +82,7 @@ docker build -t mpqmri-pipeline .
 Replace `/path/to/input` with your actual data folder.
 
 ```
-docker run --rm -v /path/to/input:/data mpqmri-pipeline --input-folder /data
+docker run -it --rm -v /path/to/input:/data mpqmri-pipeline --input-folder /data
 ```
 
 You can add other arguments as needed, e.g.:
