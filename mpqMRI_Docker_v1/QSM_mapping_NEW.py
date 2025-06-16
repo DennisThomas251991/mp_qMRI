@@ -73,8 +73,8 @@ class QSM_mapping_mpqMRI():
                 nifti['%i'%i] = nib.load(dirpath + '/'+ filename + 
                                         '_%i_echoQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).get_fdata()
             elif self.arguments.Vendor == 'Philips':
-                nifti['%i'%i] = nib.load(dirpath + '/'+ filename + '_normalized'+
-                                 '_%i_echoQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).get_fdata()
+                nifti['%i'%i] = nib.load(dirpath + '/'+ filename +
+                                 '_%i_echo_normalizedQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).get_fdata()
             if i == 0:
                 avg = nifti['0']
             else: 
@@ -89,7 +89,7 @@ class QSM_mapping_mpqMRI():
                                  '_%i_echoQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).affine
         elif self.arguments.Vendor == 'Philips':
                 affine = nib.load(dirpath + '/'+ filename + '_normalized'+
-                                 '_%i_echoQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).affine
+                                 '_%i_echo_normalizedQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).affine
        
                 
         nii_avg = nib.Nifti1Image(avg, affine = affine)
