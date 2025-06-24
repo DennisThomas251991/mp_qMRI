@@ -88,7 +88,7 @@ class QSM_mapping_mpqMRI():
                 affine = nib.load(dirpath + '/'+ filename+
                                  '_%i_echoQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).affine
         elif self.arguments.Vendor == 'Philips':
-                affine = nib.load(dirpath + '/'+ filename + '_normalized'+
+                affine = nib.load(dirpath + '/'+ filename + 
                                  '_%i_echo_normalizedQSM_map_000.nii.gz'%self.arguments.QSM_average_echoes_qsm[i]).affine
        
                 
