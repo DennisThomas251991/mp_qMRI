@@ -216,8 +216,10 @@ class H2O_map_mpqMRI():
         threshold = 0.95
         bins = 200
         if self.arguments.Vendor== 'Philips':
-            interval = [2000000, 8000000]
-
+           if self.arguments.Philips_acquisition_method =='Separate FA acquisition':
+                interval = [2000000, 8000000]
+           else: 
+                interval = [20000, 80000]
         else:
             interval = [4000, 9000]
         # Extract the relevant CSF data using the threshold

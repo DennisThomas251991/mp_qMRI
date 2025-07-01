@@ -52,6 +52,7 @@ import QSM_mapping_NEW
 import preprocessing_Siemens
 import numpy as np
 import nibabel as nib
+import matplotlib.pyplot as plt
 from Useful_functions import complex_interpolation, reorient_image
 from pathlib import Path
 # Argument parser for command-line usage
@@ -362,3 +363,103 @@ with open(os.path.join(output_folder_path, 'map_info.txt'), 'w') as f:
     for file_name, mapping in map_info.items():
         f.write(f'{file_name}: {mapping}\n')
 
+# Add histogram generation for T1, T2*, H2O, and QSM maps
+
+
+def plot_map_histogram(map_path, mask_paths, output_path, map_type, bins=200):
+    """
+    Plot histogram for quantitative map and save as TIFF image
+    """
+    # Load the quantitative map
+    map_img = nib.load(map_path)
+    map_data = map_img.get_fdata()
+    affine = map_img.affine
+    
+    # Load segmentation masks
+    c1 = nib.load(mask_paths[0]).get_fdata()  # GM mask
+    c2 = nib.load(mask_paths[1]).get_fdata()  # WM mask
+    c3 = nib.load(mask_paths[2]).get_fdata()  # CSF mask
+    
+    # Create binary masks with thresholding
+    wm_mask = (c2 > 0.98) & (c3 <= 0.80) & (c1 <= 0.80)
+    gm_mask = (c1 > 0.98) & (c3 <= 0.80) & (c2 <= 0.80)
+    
+    # Combine masks and exclude non-finite values
+    brain_mask = (wm_mask | gm_mask) & np.isfinite(map_data)
+    map_values = map_data[brain_mask]
+    
+    # Set plot parameters based on map type
+    if map_type == 'T1':
+        range_vals = (1, 3000)
+        xlabel = 'T1 [ms]'
+    elif map_type == 'T2s':
+        range_vals = (10, 300)
+        xlabel = 'T2* [ms]'
+    elif map_type == 'H2O':
+        range_vals = (0.4, 1.3)
+        xlabel = 'H2O fraction'
+    elif map_type == 'QSM':
+        range_vals = (-0.3, 0.3)
+        xlabel = 'QSM [ppm]'
+    else:
+        range_vals = (np.nanmin(map_values), np.nanmax(map_values))
+        xlabel = f'{map_type} Value'
+    
+    # Create and save histogram
+    plt.figure()
+    plt.hist(map_values, bins=bins, range=range_vals, 
+             edgecolor='blue', fc='blue', alpha=0.7, density=True)
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.xticks(fontsize=10)
+    plt.yticks([])
+    plt.xlabel(xlabel, fontsize=12)
+    plt.ylabel('Normalized Frequency', fontsize=12)
+    plt.title(f'{map_type} Distribution', fontsize=14)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=350, format='tiff')
+    plt.close()
+
+# Generate histograms for all quantitative maps
+try:
+    final_maps_dir = Path(output_folder_path) / 'Final_qMRI_maps'
+    intermediate_dir = Path(output_folder_path) / 'intermediate_files'
+    
+    # Define map files and their types
+    map_files = {
+        'T1': final_maps_dir / 'T1_map_B1corr_True_Spoilcorr_True_2echoes.nii.gz',
+        'T2s': final_maps_dir / 'avg_T2Star.nii.gz',
+        'H2O': final_maps_dir / 'H2O.nii.gz',
+        'QSM': final_maps_dir / 'QSM_avg_map.nii.gz' if arguments.QSM_mapping else None
+    }
+    
+    # Segmentation mask paths
+    mask_files = [
+        intermediate_dir / 'c1T1w_Mag.nii',
+        intermediate_dir / 'c2T1w_Mag.nii',
+        intermediate_dir / 'c3T1w_Mag.nii'
+    ]
+    
+    # Check if all required masks exist
+    if all(mask.exists() for mask in mask_files):
+        for map_type, map_path in map_files.items():
+            if map_path and map_path.exists():
+                output_path = final_maps_dir / f'{map_type}_histogram.tiff'
+                plot_map_histogram(str(map_path), 
+                                  [str(m) for m in mask_files], 
+                                  str(output_path), 
+                                  map_type)
+                print(f"Generated histogram for {map_type} at {output_path}")
+            elif map_type == 'QSM' and not arguments.QSM_mapping:
+                print("Skipping QSM histogram (QSM mapping was not performed)")
+            else:
+                print(f"Warning: Map file not found for {map_type}: {map_path}")
+    else:
+        print("Segmentation masks not found. Skipping histogram generation.")
+        for mask in mask_files:
+            if not mask.exists():
+                print(f"Missing mask: {mask}")
+
+except Exception as e:
+    print(f"Error generating histograms: {str(e)}")
+
+print("Pipeline processing complete!")
