@@ -305,7 +305,7 @@ T2Star_gre12 = output[7]
 H2O_object = H2Omapping_mpqMRI.H2O_map_mpqMRI(arguments, T1_map, B1map_coreg, T2Star_gre12)
 H2O = H2O_object.run()
 if arguments.Input_data_type == 'DICOM':
-    for file in output_folder_path.glob("*.nii.gz"):
+    for file in output_folder_path.glob("*.nii*"):
         reorient_image(file, file, ('x', '-y', 'z'))
 
 # QSM mapping (optional)

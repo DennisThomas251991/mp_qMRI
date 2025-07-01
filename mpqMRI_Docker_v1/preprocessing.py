@@ -60,90 +60,90 @@ def detect_and_process_echo_files(input_folder):
 
 def process_files(input_folder):
     """
-    Processes grouped echo files:
-    - Combines echoes if needed
-    - Determines correct FA and phase/magnitude
-    - Returns a dictionary of final files for renaming and cleanup
+    Combines echoes if needed and maps files to M0w_mag, M0w_pha, T1w_mag, T1w_pha, B1_1, B1_2 based on filename patterns.
     """
     input_folder = Path(input_folder)
-    echo_groups = detect_and_process_echo_files(input_folder)
     final_files = {}
-    for (fa, is_phase, group_id), files in echo_groups.items():
+
+    # First, combine echoes for all groups (if needed)
+    echo_groups = detect_and_process_echo_files(input_folder)
+    for group, files in echo_groups.items():
         if len(files) > 1:
-            # Prepare arguments for combining echoes
+            # Combine echoes
+            is_phase = group[1]
             arguments = {f'se{i+1}_path': file for i, (echo, file) in enumerate(files)}
+            # Use the first file's name as base for output
             first_file = files[0][1]
-            basename = first_file.name
-
-            # Extract FA information from filename
-            fa_match = re.search(r'(FA\d+)[^_]*_(FA\d+|[59]0?)', basename)
-            fa1 = fa_match.group(1) if fa_match else 'FA??'
-            fa2_raw = fa_match.group(2) if fa_match else 'FA??'
-            fa2 = fa2_raw if fa2_raw.startswith("FA") else f"FA{int(fa2_raw):02d}"
-
-            # Map group_id to correct FA
-            echo_fa_map = {1: fa1, 2: fa2}
-            base_fa = echo_fa_map.get(group_id, 'FAxx')
-
-            # Build output name
-            base_name = f"{base_fa}_{'pha' if is_phase else 'mag'}"
-            output_name = f"{base_name}"
-            print(output_name)
-
-            # Combine echoes and store result
-            combined_file = combine_echoes(arguments, len(files), output_name)
+            base_name = first_file.name.replace('.nii.gz', '')
+            if is_phase:
+                base_name += '_ph'
+            combined_file = combine_echoes(arguments, len(files), base_name)
             combined_file_path = Path(combined_file)
-            output_name += f"_Combined_{len(files)}_echoes"
-            final_files_key = f"{base_fa}_group{group_id}_{'pha' if is_phase else 'mag'}"
-            final_files[final_files_key] = combined_file_path
-
+            # Remove original files after combining
+            for _, file in files:
+                if file.exists():
+                    file.unlink()
+            # Add the combined file to the folder for mapping below
+            # We'll use the combined file's name for mapping
+            files = [(0, combined_file_path)]
         else:
-            # Single-echo file: just store with correct key
-            file = files[0][1]
-            base_name = re.sub(r'\.nii\.gz$', '', file.name)
+            # Only one file, keep as is
+            files = [files[0]]
 
-            # Extract FA info for single-echo files
-            basename = file.name
-            fa_match = re.search(r'(FA\d+)[^_]*_(FA\d+|[59]0?)', basename)
-            fa1 = fa_match.group(1) if fa_match else 'FA??'
-            fa2_raw = fa_match.group(2) if fa_match else 'FA??'
-            fa2 = fa2_raw if fa2_raw.startswith("FA") else f"FA{int(fa2_raw):02d}"
+        # For each file (combined or single), do the mapping below
+        for _, file in files:
+            fname = file.name
 
-            echo_fa_map = {1: fa1, 2: fa2}
-            base_fa = echo_fa_map.get(group_id, fa)  # Use override if match found
+            # M0w (FA32 or FA05, _1_echo)
+            if ("FA32" in fname or "FA05" in fname) and (("_1_echoCombined" in fname) or ("_1_echo_phCombined" in fname)):
+                # if "_ph" in fname:
+                #     final_files["M0w_pha"] = file
+                # else:
+                #     final_files["M0w_mag"] = file
+                if "_ph" in fname:
+                    final_files["T1w_pha"] = file
+                else:
+                    final_files["T1w_mag"] = file
+            # T1w (FA32 or FA05, _2_echo)
+            elif ("FA32" in fname or "FA05" in fname) and (("_2_echoCombined" in fname) or ("_2_echo_phCombined" in fname)):
+                # if "_ph" in fname:
+                #     final_files["T1w_pha"] = file
+                # else:
+                #     final_files["T1w_mag"] = file
+                if "_ph" in fname:
+                    final_files["M0w_pha"] = file
+                else:
+                    final_files["M0w_mag"] = file
 
-            base_name = f"{base_fa}_{'pha' if is_phase else 'mag'}"
-            final_files_key = f"{base_fa}_group{group_id}_{'pha' if is_phase else 'mag'}"
-            final_files[final_files_key] = file
+            # B1_1 (FA45 or FA90, _1_echo)
+            elif ("FA45" in fname or "FA90" in fname) and ("_1_echo" in fname):
+                if "_ph_" not in fname:
+                     final_files["B1_1"] = file
+
+            # B1_2 (FA45 or FA90, _2_echo)
+            elif ("FA45" in fname or "FA90" in fname) and ("_2_echo" in fname):
+                if "_ph_" not in fname:
+                    final_files["B1_2"] = file
+
+    # Rename files to standard names
+    for key, file in final_files.items():
+        target_path = input_folder / f"{key}.nii.gz"
+        if file != target_path:
+            file.rename(target_path)
+            final_files[key] = target_path
 
     return final_files
 
 def finalize_files(output_folder_path, final_files):
     """
-    Renames final files to standard names, removes all other files (including JSONs),
-    and prints the final folder contents.
+    Removes all files not in final_files and prints the final folder contents.
     """
     output_folder_path = Path(output_folder_path)
-    rename_map = {
-        "FA05_group2_mag": "M0w_mag",
-        "FA05_group2_pha": "M0w_pha",
-        "FA32_group1_mag": "T1w_mag",
-        "FA32_group1_pha": "T1w_pha",
-        "FA45_group1_mag": "B1_1",
-        "FA90_group2_mag": "B1_2",
-    }
+    keep_files = {f"{key}.nii.gz" for key in final_files}
 
-    # Rename files to standard names
-    for key, file_path in final_files.items():
-        if file_path.exists():
-            new_name = rename_map.get(key, key) + ".nii.gz"
-            new_file_path = output_folder_path / new_name
-            file_path.rename(new_file_path)
-            print(f"Renamed {file_path.name} to {new_file_path.name}")
-
-    # Remove all other NIfTI files not in the rename map
+    # Remove all other NIfTI files not in the final set
     for file in output_folder_path.glob("*.nii.gz"):
-        if file.name not in [v + ".nii.gz" for v in rename_map.values()]:
+        if file.name not in keep_files:
             file.unlink()
 
     # Remove all JSON files

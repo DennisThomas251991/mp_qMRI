@@ -647,6 +647,7 @@ def split_all_echoes(nifti_file):
     for i in range(n_echoes):
         
         save_nth_echo(nifti_file, i+1)
+        
 def tgv_qsm_Philips(phase, mask, t, f=3.0):
     """
     Runs TGV-QSM on a phase image.
