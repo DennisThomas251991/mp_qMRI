@@ -80,7 +80,7 @@ def parse_args():
     parser.add_argument('--echotimes', nargs='+', type=float, default=np.linspace(3.20, 25.70, num=6), help='Echo times')
     parser.add_argument('--QSM_average_echoes_qsm', nargs='+', type=int, default=[3, 4, 5, 6], help='Echoes for QSM averaging')
     parser.add_argument('--coregister_mGREs', type=bool, default=False, help='Coregister mGREs')
-    parser.add_argument('--B1map_orientation', choices=['Sag', 'Tra'], default='Tra', help='Orientation of the B1 map')
+    parser.add_argument('--B1map_orientation', choices=['Sag', 'Tra'], default='Sag', help='Orientation of the B1 map')
     parser.add_argument('--complex_interpolation', type=bool, default=False, help='Use complex interpolation')
     parser.add_argument('--B1_mapping_method', choices=['Fast EPI', 'Volz 2010'], default='Fast EPI', help='B1 mapping method')
     parser.add_argument('--QSM_mapping', type=bool, default=True, help='Perform QSM mapping')
@@ -308,7 +308,20 @@ H2O = H2O_object.run()
 if arguments.Input_data_type == 'DICOM':
     for file in output_folder_path.glob("*.nii*"):
         reorient_image(file, file, ('x', '-y', 'z'))
-
+        # Delete segmentation masks after reorientation
+for mask_name in ['c1T1w_mag.nii', 'c2T1w_mag.nii', 'c3T1w_mag.nii']:
+    mask_path = output_folder_path / mask_name
+    if mask_path.exists():
+        mask_path.unlink()
+# output_folder_path = Path(original_input_folder) / 'Niftis' / 'Final_qMRI_maps'
+# for file in output_folder_path.glob("*.nii*"):
+#     reorient_image(file, file, ('x', '-y', 'z'))
+# output_folder_path = Path(original_input_folder) / 'Niftis' /  'intermediate_files'
+# for file in output_folder_path.glob("*.nii*"):
+#     reorient_image(file, file, ('x', '-y', 'z'))
+# output_folder_path = Path(original_input_folder) / 'Niftis'
+# for file in output_folder_path.glob("*.nii*"):
+#     reorient_image(file, file, ('x', '-y', 'z'))
 # QSM mapping (optional)
 if arguments.QSM_mapping == True:
     QSM_object = QSM_mapping_NEW.QSM_mapping_mpqMRI(arguments)
@@ -434,9 +447,9 @@ try:
     
     # Segmentation mask paths
     mask_files = [
-        intermediate_dir / 'c1T1w_Mag.nii',
-        intermediate_dir / 'c2T1w_Mag.nii',
-        intermediate_dir / 'c3T1w_Mag.nii'
+        intermediate_dir / 'c1T1w_Mag.nii.gz',
+        intermediate_dir / 'c2T1w_Mag.nii.gz',
+        intermediate_dir / 'c3T1w_Mag.nii.gz'
     ]
     
     # Check if all required masks exist

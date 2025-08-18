@@ -57,6 +57,7 @@ def process_files(input_folder, combine_echoes_enabled):
                 base_name = re.sub(r'_e\d+(_ph)?\.nii\.gz$', '', first_file.name)
                 if is_phase:
                     base_name += '_ph_'
+                    print('phase file detected', base_name)
 
                 # Combine echoes
                 combined_file = combine_echoes(arguments, 6, base_name)
@@ -67,9 +68,9 @@ def process_files(input_folder, combine_echoes_enabled):
     # Handle B1_1 and B1_2 directly
     b1_files = {}
     for file in input_folder.glob("*.nii.gz"):
-        if "FA_45" in file.name and "_ph" not in file.name:
+        if ("FA_45" in file.name) or ("45deg" in file.name) and "_ph" not in file.name:
             b1_files["B1_1"] = file
-        elif "FA_90" in file.name and "_ph" not in file.name:
+        elif ("FA_90" in file.name) or ("90deg" in file.name) and "_ph" not in file.name:
             b1_files["B1_2"] = file
 
     # Filter final output files
