@@ -37,7 +37,7 @@ This command creates a Docker image named mpqmri-pipeline.
 Input Folder Structure
 ----------------------
 If your input is DICOM:
-- Simply place all DICOM files in a folder (e.g. D:/mpqMRI_docker/input).
+- Simply place all DICOM files in any folder (e.g. D:/mpqMRI_docker/test).
 - The pipeline will automatically convert them to NIfTI.
 
 If your input is NIfTI:
@@ -56,11 +56,11 @@ Running the Pipeline with Docker
 --------------------------------
 Once your input data is ready:
 
-docker run -it --rm -v "D:/mpqMRI_docker/input:/data" mpqmri-pipeline --input-folder /data
+docker run -it --rm -v "D:/mpqMRI_docker/test:/data" mpqmri-pipeline --input-folder /data
 
 You can add more options as needed. For example:
 
-docker run -it --rm -v "D:/mpqMRI_docker/input:/data" mpqmri-pipeline --input-folder /data --Vendor Philips --Input_data_type Nifti --B1_mapping_method "Fast EPI"
+docker run -it --rm -v "D:/mpqMRI_docker/test:/data" mpqmri-pipeline --input-folder /data --Vendor Philips --Input_data_type Nifti --B1_mapping_method "Fast EPI"
 All the same command-line arguments used in Docker are available here.
 
 Command-Line Arguments
@@ -121,4 +121,5 @@ But make sure you change the necessary paths and Parameters inside the script to
 Contact & Source Code
 ---------------------
 For more details, see the source code in the GitHub repository:
+
 https://github.com/DennisThomas251991/mp_qMRI
