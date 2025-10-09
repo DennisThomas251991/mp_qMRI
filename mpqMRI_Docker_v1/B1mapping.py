@@ -263,10 +263,8 @@ class B1_map_Dennis():
                
             elif self.arguments.B1map_orientation== 'Sag':
                 phasedir='x-'
-                sign_gradient=-1;
-       
-
-
+                sign_gradient=1;
+      
             dst = os.path.split(self.path_EPI45)[0]
             
             

@@ -4,10 +4,9 @@ Created on Thu Mar  2 16:17:47 2023
 
 @author: denni
 """
-
+import os
 import nibabel as nib
 import numpy as np
-import os
 from Useful_functions import fsl_brain_masking
 
 class t2s_map_mpqMRI():
@@ -122,15 +121,15 @@ class t2s_map_mpqMRI():
         
         
         dst = os.path.split(self.arguments.gre2_path)[0]
-        T2Star_gre1_path = dst + '/' + 'T2Star_gre1.nii.gz'
-        T2Star_gre2_path = dst + '/' + 'T2Star_gre2.nii.gz'
-        T2Star_avg_path = dst + '/' + 'T2Star_avg.nii.gz'
-        avg_T2Star_path = dst + '/' + 'avg_T2Star.nii.gz'
+        T2Star_gre1_path = f"{dst}/T2Star_FA{self.arguments.FA1}.nii.gz"
+        T2Star_gre2_path = f"{dst}/T2Star_FA{self.arguments.FA2}.nii.gz"
+        T2Star_avg_path = f"{dst}/T2Star_avg.nii.gz"
+        avg_T2Star_path = f"{dst}/avg_T2Star.nii.gz"
         
-        M0_gre1_path = dst + '/' + 'M0_gre1.nii.gz'
-        M0_gre2_path = dst + '/' + 'M0_gre2.nii.gz'
-        M0_avg_path = dst + '/' + 'M0_avg.nii.gz'
-        avg_M0_path = dst + '/' + 'avg_M0.nii.gz'
+        M0_gre1_path = f"{dst}/M0_FA{self.arguments.FA1}.nii.gz"
+        M0_gre2_path = f"{dst}/M0_FA{self.arguments.FA2}.nii.gz"
+        M0_avg_path = f"{dst}/M0_avg.nii.gz"
+        avg_M0_path = f"{dst}/avg_M0.nii.gz"
         
         nib.save(T2Star_gre1_nii, T2Star_gre1_path)
         nib.save(T2Star_gre2_nii, T2Star_gre2_path)
@@ -195,6 +194,6 @@ def T2star_fit(self, echotimes, timeseries):
     M0 = tmp.dot(timeseries.T)[0] # 0 => intercept_
     t2s = tmp.dot(timeseries.T)[1]# 1 => coef_
     
-    return M0, t2s  
+    return M0, t2s
 
 

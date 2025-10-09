@@ -12,13 +12,13 @@ Date of completion of version 1 of 'Frankfurt_qMRI' python package:
 """
 import gzip
 import shutil
-import nibabel as nib
-import numpy as np
 import os
 from Useful_functions import fsl_fastseg
 from Useful_functions import fsl_brain_masking
 from Useful_functions import SPM_segment
 from scipy.stats import mode
+import nibabel as nib
+import numpy as np
 class H2O_map_mpqMRI():
     
     def __init__(self, arguments, T1_map, B1_map, T2star_map):
