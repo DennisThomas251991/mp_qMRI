@@ -321,7 +321,9 @@ def main():
         'H2O.nii.gz',
         'avg_T2Star.nii.gz',
         't1map_linear_approach.nii.gz',
-        'QSM_avg_map.nii.gz'
+        'QSM_avg_map.nii.gz',
+        'T2Star_FA{int(self.arguments.FA1):02d}.nii.gz,'
+        'T2Star_FA{int(self.arguments.FA2):02d}.nii.gz'
     ]
     main_maps = [
         'M0w_mag.nii.gz', 'M0w_pha.nii.gz', 'T1w_mag.nii.gz', 'T1w_pha.nii.gz', 'B1_1.nii.gz', 'B1_2.nii.gz'
