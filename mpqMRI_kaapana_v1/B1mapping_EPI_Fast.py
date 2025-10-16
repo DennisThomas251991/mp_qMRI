@@ -26,18 +26,27 @@ from ralf_qMRI_get_image_mask_improved import ralf_qMRI_get_image_mask_improved
 from ralf_qMRI_calc_b1map_from_epi_data import ralf_qMRI_calc_b1map_from_epi_data
 from ralf_qMRI_improve_B1_map import ralf_qMRI_improve_B1_map
 import os
-def B1mapping_EPI_fast(path, name_b0map, name_EPI_45deg, name_EPI_90deg,sign_gradient):
+def B1mapping_EPI_fast(path, name_b0map, name_EPI_45deg, name_EPI_90deg,sign_gradient,Vendor):
     os.chdir(path)
     print('\n######################################\n')
     print('#  STARTING B1-MAPPING FOR RELEASE DATA\n')
     print('######################################\n\n')
-    # Set sequence parameters
-    best_btp = 5.8  #BTP that was determined for the Siemens release EPI from the phantom measurement
-    b0_slice_resol = 4 #interslice distance (in mm) of the B0 map (slice center to slice center), including the interslice gap
-    epi_slice_thickness = 2 #slice thickness (in mm) of the EPI data, without interslice gaps
-    #REMARK: epi_slice_thickness differs from b0_slice_resol as the latter includes interslice gaps
-    te = 21 # echo time TE (in ms) of the EPI sequence: te=19 for sagittal data and te=21 for axial data
-    
+    if Vendor == 'Philips':
+        # Set sequence parameters
+        best_btp = 3.0  #BTP that was determined for the Siemens release EPI from the phantom measurement
+        b0_slice_resol = 4 #interslice distance (in mm) of the B0 map (slice center to slice center), including the interslice gap
+        epi_slice_thickness = 2 #slice thickness (in mm) of the EPI data, without interslice gaps
+        #REMARK: epi_slice_thickness differs from b0_slice_resol as the latter includes interslice gaps
+        te = 19 # echo time TE (in ms) of the EPI sequence: te=19 for sagittal data and te=21 for axial data
+    else:
+
+        # Set sequence parameters
+        best_btp = 5.8  #BTP that was determined for the Siemens release EPI from the phantom measurement
+        b0_slice_resol = 4 #interslice distance (in mm) of the B0 map (slice center to slice center), including the interslice gap
+        epi_slice_thickness = 2 #slice thickness (in mm) of the EPI data, without interslice gaps
+        #REMARK: epi_slice_thickness differs from b0_slice_resol as the latter includes interslice gaps
+        te = 21 # echo time TE (in ms) of the EPI sequence: te=19 for sagittal data and te=21 for axial data
+        
 
 
     # Extended data

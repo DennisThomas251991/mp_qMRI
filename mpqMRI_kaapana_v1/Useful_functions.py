@@ -18,16 +18,16 @@ Description:
 import subprocess
 import os
 import shutil
-from pathlib import Path
-# import nipype.interfaces.spm as spm
+import subprocess
+import json 
 import nibabel as nib
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import resample
-import subprocess
-import os
-import json 
+from pathlib import Path
 
+
+cwd = os.getcwd()
 def extract_scaling_parameters(json_file):
     with open(json_file, 'r') as f:
         json_data = json.load(f)
@@ -38,8 +38,6 @@ def extract_scaling_parameters(json_file):
     scale_slope = json_data.get('PhilipsScaleSlope', 1)  # Default to 1 if not found
     
     return rescale_slope, rescale_intercept, scale_slope
-
-import subprocess
 
 def reorient_image(input_nifti, output_nifti, new_orientation):
     """
@@ -86,9 +84,9 @@ def convert_dicom_to_nifti(dicom_dir, output_dir):
         print(f"Conversion completed. NIfTI files saved in: {output_dir}")
     except subprocess.CalledProcessError as e:
         print(f"Error during DICOM to NIfTI conversion: {e}")
-        raise
 
-cwd = os.getcwd()
+
+
 def Philips_scaling_correct_MRI_CroGL(file_path, rescale_slope, rescale_intercept, scale_slope):
     
     os.chdir(os.path.dirname(file_path))
@@ -387,14 +385,7 @@ def fsl_flirt_registration(moving_nii, fixed_nii,additional_args=None, dof=6):
     shutil.rmtree(FSL_dirpath)   
     
     return os.path.basename(out_path)
-    
-    
-    
-    
-    
-   
-
-
+ 
 def fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix):
     FSL_dirpath =os.path.join(cwd, "FSL_temp")
     if os.path.exists(FSL_dirpath):
@@ -415,9 +406,7 @@ def fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix):
     src = matrix
     dst = os.path.join(cwd, "FSL_temp")
     shutil.copy(src, dst)
-    
-    
-    
+ 
     filename1 = os.path.basename(moving_nii)
     if filename1[-3:] == '.gz':
         filename1 = filename1[:-7]
@@ -442,9 +431,7 @@ def fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix):
     command=['flirt', '-in', input_path, '-ref', ref_path, '-out', out_path, '-init', mat_path, '-applyxfm']
     # Run the command
     subprocess.run(command, check=True)
-
-   
-    
+  
     for file in Path(FSL_dirpath).glob('%s*'%filename1):
         print('transferred %s' %file)
         src = file
@@ -452,59 +439,32 @@ def fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix):
         shutil.copy(src, dst)
         
     shutil.rmtree(FSL_dirpath)
-    
-
     return os.path.basename(out_path)
-    
-    
-    
-def spm_coreg(target_file, source_file):
+
+
+def fsl_flirt_applyxfm_multiple_images(moving_nii_list, fixed_nii, matrix):
     """
+    
 
     Parameters
     ----------
-    target_file : path-like string
-        path to the file that has to be coregistered
-    source_file : path-like string
-        path to the file that is to be registered to
+    moving_nii_list : TYPE
+        Give a list of files that you want to coregister
+    fixed_nii : TYPE
+        Give one nii file path for the fixed nii image
+    matrix : TYPE
+        The affine transformation matrix
 
     Returns
     -------
     None.
 
     """
-
-    spm.SPMCommand.set_mlab_paths(matlab_cmd = 'matlab -nodesktop -nosplash', paths ='C:/Users/denni/OneDrive/Desktop/spm12')
-    coreg = spm.Coregister()
-    coreg.inputs.target = target_file
-    coreg.inputs.source = source_file
-
-    coreg.run()
-
-def spm_biasfield(file, reg=0.001, FWHM=60):
-    """
-
-    Parameters
-    ----------
-    file : path-like string
-        path to the input file
-
-    Returns
-    -------
-    Bias corrected images and Bias field is saved in the input file path
-
-    """
-
-    spm.SPMCommand.set_mlab_paths(matlab_cmd = 'matlab -nodesktop -nosplash', paths ='C:/Users/denni/OneDrive/Desktop/spm12')
-    seg = spm.NewSegment()
-
-
-    seg.inputs.channel_files = file
-    seg.inputs.channel_info = (reg, FWHM, (True, True))
-
-    seg.run()
-
-
+    
+    for moving_nii in moving_nii_list:
+        
+        fsl_flirt_applyxfm(moving_nii, fixed_nii, matrix);    
+    
 def threshold_masking(mag_path, threshold, save=True):
     """
 
@@ -647,6 +607,7 @@ def split_all_echoes(nifti_file):
     for i in range(n_echoes):
         
         save_nth_echo(nifti_file, i+1)
+        
 def tgv_qsm_Philips(phase, mask, t, f=3.0):
     """
     Runs TGV-QSM on a phase image.

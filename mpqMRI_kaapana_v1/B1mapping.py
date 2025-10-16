@@ -234,7 +234,7 @@ class B1_map_Dennis():
             b0 = os.path.basename(B0_map_path)
             
             basefilename = filename_b11
-            B1map = B1mapping_EPI_fast(path, b0, corr_45, corr_90,sign_gradient);
+            B1map = B1mapping_EPI_fast(path, b0, corr_45, corr_90,sign_gradient,self.arguments.Vendor);
             
             B1map = np.asarray(B1map)
             
@@ -263,10 +263,8 @@ class B1_map_Dennis():
                
             elif self.arguments.B1map_orientation== 'Sag':
                 phasedir='x-'
-                sign_gradient=-1;
-       
-
-
+                sign_gradient=1;
+      
             dst = os.path.split(self.path_EPI45)[0]
             
             
@@ -286,7 +284,7 @@ class B1_map_Dennis():
             
             basefilename = filename_b11
             
-            B1map = B1mapping_EPI_fast(path, b0, corr_45, corr_90,sign_gradient);
+            B1map = B1mapping_EPI_fast(path, b0, corr_45, corr_90,sign_gradient,self.arguments.Vendor);
             
             B1map = np.asarray(B1map)
             
