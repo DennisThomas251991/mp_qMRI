@@ -21,10 +21,11 @@ RUN /opt/conda/bin/conda install -y cython numpy pyparsing && \
 # Set the working directory
 WORKDIR /app
 
-# Assuming your working directory contains the TGVQSM-master-011045626121baa8bfdd6633929974c732ae35e3 folder
-COPY TGVQSM-master-011045626121baa8bfdd6633929974c732ae35e3 /app/TGVQSM-master-011045626121baa8bfdd6633929974c732ae35e3
 
-WORKDIR /app/TGVQSM-master-011045626121baa8bfdd6633929974c732ae35e3/
+# Assuming your working directory contains the TGVQSM-master folder
+COPY TGVQSM-master /app/TGVQSM-master
+
+WORKDIR /app/TGVQSM-master/
 
 RUN python setup.py install && \
     cd test_data && \
