@@ -121,13 +121,13 @@ class t2s_map_mpqMRI():
         
         
         dst = os.path.split(self.arguments.gre2_path)[0]
-        T2Star_gre1_path = f"{dst}/T2Star_FA{self.arguments.FA1}.nii.gz"
-        T2Star_gre2_path = f"{dst}/T2Star_FA{self.arguments.FA2}.nii.gz"
+        T2Star_gre1_path = f"{dst}/T2Star_FA{int(self.arguments.FA1):02d}.nii.gz"
+        T2Star_gre2_path = f"{dst}/T2Star_FA{int(self.arguments.FA2):02d}.nii.gz"
         T2Star_avg_path = f"{dst}/T2Star_avg.nii.gz"
         avg_T2Star_path = f"{dst}/avg_T2Star.nii.gz"
         
-        M0_gre1_path = f"{dst}/M0_FA{self.arguments.FA1}.nii.gz"
-        M0_gre2_path = f"{dst}/M0_FA{self.arguments.FA2}.nii.gz"
+        M0_gre1_path = f"{dst}/M0_FA{int(self.arguments.FA1):02d}.nii.gz"
+        M0_gre2_path = f"{dst}/M0_FA{int(self.arguments.FA2):02d}.nii.gz"
         M0_avg_path = f"{dst}/M0_avg.nii.gz"
         avg_M0_path = f"{dst}/avg_M0.nii.gz"
         

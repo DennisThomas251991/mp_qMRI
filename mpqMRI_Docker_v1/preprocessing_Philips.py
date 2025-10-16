@@ -179,7 +179,6 @@ def run(input_folder, acquisition_method):
 
         # Process and finalize files
         final_files = process_files(output_folder_path)
-        print(final_files)
         finalize_files(output_folder_path, final_files)
     else:
         # Separate FA acquisition logic

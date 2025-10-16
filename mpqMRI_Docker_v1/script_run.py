@@ -41,6 +41,7 @@ import sys
 import argparse
 import shutil
 import logging
+import os
 from pathlib import Path
 
 import numpy as np
@@ -89,7 +90,7 @@ def parse_args():
     parser.add_argument('--Phantom_mask_threshold_B1mapping', type=int, default=100, help='Threshold for B1 mapping phantom mask')
     parser.add_argument('--Phantom_mask_threshold_T1mapping', type=int, default=100, help='Threshold for T1 mapping phantom mask')
     parser.add_argument('--spoil_increment', type=int, default=50, help='Spoil increment')
-    parser.add_argument('--slices', default='all', help='Slices')
+    parser.add_argument('--slices', default = all, help='Slices')
     parser.add_argument('--echotimes', nargs='+', type=float, default=[3.2, 7.7, 12.2, 16.7, 21.2, 25.7], help='Echo times')
     parser.add_argument('--QSM_average_echoes_qsm', nargs='+', type=int, default=[3, 4, 5, 6], help='Echoes for QSM averaging')
     parser.add_argument('--coregister_mGREs', type=bool, default=False, help='Coregister mGREs')
@@ -119,10 +120,10 @@ def interactive_update_args(args):
     args.TR2 = int(user_input_with_default('TR2 [ms]', args.TR2))
     args.nTE = int(user_input_with_default('nTE (Number of echo times)', args.nTE))
     args.x0 = int(user_input_with_default('x0 value', args.x0))
-    args.phantom = user_input_with_default('Phantom (True/False)', args.phantom).lower() == 'true'
-    args.masking = user_input_with_default('masking (True/False)', args.masking).lower() == 'true'
-    args.b1plus_mapping = user_input_with_default('b1plus_mapping (True/False)', args.b1plus_mapping).lower() == 'true'
-    args.corr_for_imperfect_spoiling = user_input_with_default('corr_for_imperfect_spoiling (True/False)', args.corr_for_imperfect_spoiling).lower() == 'true'
+    args.phantom = user_input_with_default('Phantom (True/False)', args.phantom) 
+    args.masking = user_input_with_default('masking (True/False)', args.masking) 
+    args.b1plus_mapping = user_input_with_default('b1plus_mapping (True/False)', args.b1plus_mapping) 
+    args.corr_for_imperfect_spoiling = user_input_with_default('corr_for_imperfect_spoiling (True/False)', args.corr_for_imperfect_spoiling) 
     args.Phantom_mask_threshold_B1mapping = int(user_input_with_default('Phantom_mask_threshold_B1mapping', args.Phantom_mask_threshold_B1mapping))
     args.Phantom_mask_threshold_T1mapping = int(user_input_with_default('Phantom_mask_threshold_T1mapping', args.Phantom_mask_threshold_T1mapping))
     args.spoil_increment = int(user_input_with_default('Spoil increment', args.spoil_increment))
@@ -133,15 +134,16 @@ def interactive_update_args(args):
         num_echoes = int(user_input_with_default('Number of echoes', 6))
         args.echotimes = [T0 + i * delta_t for i in range(num_echoes)]
     args.QSM_average_echoes_qsm = [int(e) for e in user_input_with_default('QSM_average_echoes_qsm (comma-separated)', ','.join(map(str, args.QSM_average_echoes_qsm))).split(',')]
-    args.coregister_mGREs = user_input_with_default('Coregister mGREs? (True/False)', args.coregister_mGREs).lower() == 'true'
+    args.coregister_mGREs = user_input_with_default('Coregister mGREs? (True/False)', args.coregister_mGREs) 
     args.B1map_orientation = user_input_with_default('B1map_orientation (Sag/Tra)', args.B1map_orientation)
-    args.complex_interpolation = user_input_with_default('complex_interpolation (True/False)', args.complex_interpolation).lower() == 'true'
+    args.complex_interpolation = user_input_with_default('complex_interpolation (True/False)', args.complex_interpolation) 
     args.B1_mapping_method = user_input_with_default('B1_mapping_method (Fast EPI/Volz 2010)', args.B1_mapping_method)
-    args.QSM_mapping = user_input_with_default('QSM_mapping (True/False)', args.QSM_mapping).lower() == 'true'
+    args.QSM_mapping = user_input_with_default('QSM_mapping (True/False)', args.QSM_mapping)
     return args
 
 def write_log_file(args, output_folder):
     """Write arguments to a log file."""
+    output_folder.mkdir(parents=True, exist_ok=True)   # ensure folder exists
     log_file = output_folder / 'info.txt'
     with open(log_file, 'w') as f:
         for key, value in vars(args).items():
@@ -172,7 +174,7 @@ def assign_file_paths(args, file_paths):
 
 def move_files(src_folder, dst_folder, except_files):
     """Move all files except those in except_files from src_folder to dst_folder."""
-    dst_folder.mkdir(exist_ok=True)
+    dst_folder.mkdir(parents=True, exist_ok=True)
     for item in src_folder.iterdir():
         if item.is_file() and item.name not in except_files:
             shutil.move(str(item), str(dst_folder))
@@ -221,11 +223,22 @@ def main():
     if not input_folder.exists():
         print(f"Input folder does not exist: {input_folder}")
         sys.exit(1)
+
+    # ensure output folder exists early (fixes FileNotFoundError when writing map_info.txt)
     output_folder = input_folder / 'Niftis' if args.Input_data_type == 'DICOM' else input_folder
-    output_folder.mkdir(exist_ok=True)
-    setup_logging(output_folder / "pipeline.log")
-    if getattr(args, 'interactive', False):
-        args = interactive_update_args(args)
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    setup_logging(output_folder / "pipeline_log.log")
+
+    # Interactive behaviour:
+    # - If user passed --interactive: always prompt
+    # - If container attached to a tty (-it) and no other CLI flags given, prompt as well
+    has_cli_flags = any(arg.startswith('--') for arg in sys.argv[1:])
+    if args.interactive or (sys.stdin.isatty() and not has_cli_flags):
+        try:
+            args = interactive_update_args(args)
+        except Exception as e:
+            logging.warning(f"Interactive input skipped: {e}")
     logging.info("Starting mp-qMRI pipeline.")
     # Preprocessing
     if args.Input_data_type == 'DICOM':
@@ -284,6 +297,7 @@ def main():
     T1_object = T1mapping_mpqMRI.T1_mapping_mpqMRI(args, B1map_coreg)
     T1_map2 = T1_object.run_linear_approach(save=True)
     T1_map = T1_object.run(save=True)
+
     # T2* mapping
     T2s_object = T2smapping.t2s_map_mpqMRI(args)
     output = T2s_object.run(nechoes=6, save=True)
@@ -312,10 +326,12 @@ def main():
     main_maps = [
         'M0w_mag.nii.gz', 'M0w_pha.nii.gz', 'T1w_mag.nii.gz', 'T1w_pha.nii.gz', 'B1_1.nii.gz', 'B1_2.nii.gz'
     ]
+    # Ensure intermediate and final folders exist before later writes/moves
     intermediary_folder = output_folder / 'intermediate_files'
     final_maps_folder = output_folder / 'Final_qMRI_maps'
+    intermediary_folder.mkdir(parents=True, exist_ok=True)
+    final_maps_folder.mkdir(parents=True, exist_ok=True)
     move_files(output_folder, intermediary_folder, output_files + main_maps)
-    final_maps_folder.mkdir(exist_ok=True)
     for file_name in output_files:
         src_path = output_folder / file_name
         if src_path.exists():
