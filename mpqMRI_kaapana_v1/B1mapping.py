@@ -258,8 +258,11 @@ class B1_map_Dennis():
             else:
                 filename_b12 = filename_b12[:-4]
             if self.arguments.B1map_orientation== 'Tra':
-                phasedir='y'
                 sign_gradient=1;
+                if self.arguments.Vendor == 'Siemens':
+                    phasedir='y-'   
+                else:
+                    phasedir='y'
                
             elif self.arguments.B1map_orientation== 'Sag':
                 phasedir='x-'

@@ -891,6 +891,7 @@ def complex_interpolation(mag_path, pha_path, interpol2shape = [216, 224, 172],
     nib.save(nii_1_2mm_resampled_phase, '%s'%save_name + '_pha.nii.gz')
     
     return path + '/' + '%s'%save_name + '_mag.nii.gz', path + '/' + '%s'%save_name + '_pha.nii.gz'
+
 def fsl_EPI_distortion_corr(file_path, B0map_path, mydwell = 0.0005, phasedir='y'):
     """
     
