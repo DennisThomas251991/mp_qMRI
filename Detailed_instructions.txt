@@ -56,11 +56,11 @@ Running the Pipeline with Docker
 --------------------------------
 Once your input data is ready:
 
-docker run -it --rm -v "D:/mpqMRI_docker/test:/data" mpqmri-pipeline --input-folder /data
+docker run -it --rm -v "D:/mpqMRI_docker/test:/data" mpqmri-pipeline --input-folder /data --interactive
 
 You can add more options as needed. For example:
 
-docker run -it --rm -v "D:/mpqMRI_docker/test:/data" mpqmri-pipeline --input-folder /data --Vendor Philips --Input_data_type Nifti --B1_mapping_method "Fast EPI"
+docker run -it --rm -v "D:/mpqMRI_docker/test:/data" mpqmri-pipeline --input-folder /data --Vendor Philips --Input_data_type Nifti --B1_mapping_method "Fast EPI" --interactive
 All the same command-line arguments used in Docker are available here.
 
 Command-Line Arguments
@@ -123,3 +123,4 @@ Contact & Source Code
 For more details, see the source code in the GitHub repository:
 
 https://github.com/DennisThomas251991/mp_qMRI
+
