@@ -69,7 +69,9 @@ with open(os.path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 # Extension
-extensions = [make_ext(modname="TGV_QSM/qsm_tgv_cython_helper", pyxfilename="TGV_QSM/qsm_tgv_cython_helper.pyx")]
+extensions = [make_ext(modname="TGV_QSM.qsm_tgv_cython_helper", pyxfilename="TGV_QSM/qsm_tgv_cython_helper.pyx")]
+for e in extensions:
+    e.include_dirs.append(numpy.get_include())
 
 setup(
     name='TGV_QSM',
