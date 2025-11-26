@@ -7,27 +7,43 @@ ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive
 RUN apt-get update --fix-missing && \
     apt-get install -y --no-install-recommends \
         wget bzip2 ca-certificates curl git unzip \
-        python3 python3-pip python3-dev \
+        python3 python3-pip python3-dev cython3\
         libxml2 libxml2-dev libxslt1-dev \
         build-essential dcm2niix xorg && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install required Python packages
-RUN python3 -m pip install --upgrade pip setuptools wheel cython numpy scipy nibabel pyparsing
+# ------------------------------------------
+# Install Miniconda2 (required by TGV-QSM)
+# ------------------------------------------
+WORKDIR /opt
+RUN apt-get update && apt-get install -y wget unzip gcc && \
+    wget https://repo.anaconda.com/miniconda/Miniconda2-4.6.14-Linux-x86_64.sh && \
+    bash Miniconda2-4.6.14-Linux-x86_64.sh -b -p /opt/miniconda2 && \
+    rm Miniconda2-4.6.14-Linux-x86_64.sh
 
-# Set working directory
+# Add conda to PATH
+ENV PATH="/opt/miniconda2/bin:${PATH}"
+
+# ------------------------------------------
+# Create environment and install dependencies
+# ------------------------------------------
+RUN conda install -y cython==0.25.2 numpy pyparsing
+RUN pip install scipy==0.17.1 nibabel==2.1.0
+
+# ------------------------------------------
+# Install TGV-QSM exactly as authors intended
+# ------------------------------------------
 WORKDIR /app
 COPY TGVQSM-master /app/TGVQSM-master
 
 WORKDIR /app/TGVQSM-master
+RUN python setup.py install
 
-# Install TGVQSM (Cython modules compile here)
-RUN python3 setup.py install
-
-# Test installation (optional)
+# ------------------------------------------
+# Test
+# ------------------------------------------
 WORKDIR /app/TGVQSM-master/test_data
-RUN tgv_qsm -p epi3d_test_phase.nii.gz -m epi3d_test_mask.nii.gz -f 2.89 -t 0.027 -o epi3d_test_QSM || echo "Skipping test run"
-
+RUN tgv_qsm -p epi3d_test_phase.nii.gz -m epi3d_test_mask.nii.gz -f 2.89 -t 0.027 -o epi3d_test_QSM
 # Back to /app
 WORKDIR /app
 
