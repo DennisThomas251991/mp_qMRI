@@ -94,7 +94,7 @@ def parse_args():
     parser.add_argument('--echotimes', nargs='+', type=float, default=[3.2, 7.7, 12.2, 16.7, 21.2, 25.7], help='Echo times')
     parser.add_argument('--QSM_average_echoes_qsm', nargs='+', type=int, default=[3, 4, 5, 6], help='Echoes for QSM averaging')
     parser.add_argument('--coregister_mGREs', type=bool, default=False, help='Coregister mGREs')
-    parser.add_argument('--B1map_orientation', choices=['Sag', 'Tra'], default='Sag', help='Orientation of the B1 map')
+    parser.add_argument('--B1map_orientation', choices=['Sag', 'Tra'], default='Tra', help='Orientation of the B1 map')
     parser.add_argument('--complex_interpolation', type=bool, default=False, help='Use complex interpolation')
     parser.add_argument('--B1_mapping_method', choices=['Fast EPI', 'Volz 2010'], default='Fast EPI', help='B1 mapping method')
     parser.add_argument('--QSM_mapping', type=bool, default=True, help='Perform QSM mapping')
