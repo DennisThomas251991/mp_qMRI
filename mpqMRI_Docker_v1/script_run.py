@@ -98,6 +98,8 @@ def parse_args():
     parser.add_argument('--complex_interpolation', type=bool, default=False, help='Use complex interpolation')
     parser.add_argument('--B1_mapping_method', choices=['Fast EPI', 'Volz 2010'], default='Fast EPI', help='B1 mapping method')
     parser.add_argument('--QSM_mapping', type=bool, default=True, help='Perform QSM mapping')
+    parser.add_argument('--sign_gradient', type=int, default=None, help='Sign gradient for B1 mapping (+1 or -1). If not provided, defaults from B1mapping module are used based on orientation')
+    parser.add_argument('--phase_dir', type=str, default=None, help='Phase direction for EPI distortion correction (e.g. "y", "y-", "x-"). If not provided, defaults from B1mapping module are used based on orientation/vendor')
     parser.add_argument('--interactive', action='store_true', help='Run in interactive mode')
     return parser.parse_args()
 
@@ -137,6 +139,23 @@ def interactive_update_args(args):
     args.coregister_mGREs = user_input_with_default('Coregister mGREs? (True/False)', args.coregister_mGREs) 
     args.B1map_orientation = user_input_with_default('B1map_orientation (Sag/Tra)', args.B1map_orientation)
     args.complex_interpolation = user_input_with_default('complex_interpolation (True/False)', args.complex_interpolation) 
+    # Allow user to override sign_gradient; leave as None to use module defaults
+    sg = user_input_with_default('sign_gradient (+1 or -1) or leave blank to use default', args.sign_gradient)
+    try:
+        if sg is None:
+            args.sign_gradient = None
+        else:
+            args.sign_gradient = int(sg)
+    except Exception:
+        args.sign_gradient = None
+    pd = user_input_with_default('phase_dir (e.g. y, y-, x-) or leave blank to use default', args.phase_dir)
+    try:
+        if pd is None or pd == 'None' or pd == '':
+            args.phase_dir = None
+        else:
+            args.phase_dir = str(pd)
+    except Exception:
+        args.phase_dir = None
     args.B1_mapping_method = user_input_with_default('B1_mapping_method (Fast EPI/Volz 2010)', args.B1_mapping_method)
     args.QSM_mapping = user_input_with_default('QSM_mapping (True/False)', args.QSM_mapping)
     return args

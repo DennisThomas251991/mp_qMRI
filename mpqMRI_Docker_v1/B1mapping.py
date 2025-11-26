@@ -210,12 +210,29 @@ class B1_map_Dennis():
             else:
                 filename_b12 = filename_b12[:-4]
             if self.arguments.B1map_orientation == 'Tra':
-                phasedir='y'
-                sign_gradient = 1
-               
+                # user overrides
+                user_sign = getattr(self.arguments, 'sign_gradient', None)
+                user_phase = getattr(self.arguments, 'phase_dir', None)
+                if user_sign is not None:
+                    sign_gradient = int(user_sign)
+                else:
+                    sign_gradient = 1
+                if user_phase is not None:
+                    phasedir = str(user_phase)
+                else:
+                    phasedir = 'y'
+
             elif self.arguments.B1map_orientation == 'Sag':
-                phasedir='x-'
-                sign_gradient =-1
+                user_sign = getattr(self.arguments, 'sign_gradient', None)
+                user_phase = getattr(self.arguments, 'phase_dir', None)
+                if user_sign is not None:
+                    sign_gradient = int(user_sign)
+                else:
+                    sign_gradient = -1
+                if user_phase is not None:
+                    phasedir = str(user_phase)
+                else:
+                    phasedir = 'x-'
             dst = os.path.split(self.path_EPI45)[0]
             
             
@@ -257,16 +274,34 @@ class B1_map_Dennis():
                 filename_b12 = filename_b12[:-7]
             else:
                 filename_b12 = filename_b12[:-4]
-            if self.arguments.B1map_orientation== 'Tra':
-                sign_gradient=1;
-                if self.arguments.Vendor == 'Siemens':
-                    phasedir='y-'   
-                else:
-                    phasedir='y'
-               
-            elif self.arguments.B1map_orientation== 'Sag':
-                phasedir='x-'
-                sign_gradient=1;
+            # Determine user overrides
+            user_sign = getattr(self.arguments, 'sign_gradient', None)
+            user_phase = getattr(self.arguments, 'phase_dir', None)
+            if user_sign is not None:
+                sign_gradient = int(user_sign)
+                if self.arguments.B1map_orientation == 'Tra':
+                    if self.arguments.Vendor == 'Siemens':
+                        phasedir = 'y-'
+                    else:
+                        phasedir = 'y'
+                elif self.arguments.B1map_orientation == 'Sag':
+                    phasedir = 'x-'
+                # if user provided a phase_dir, override phasedir
+                if user_phase is not None:
+                    phasedir = str(user_phase)
+            else:
+                if self.arguments.B1map_orientation == 'Tra':
+                    sign_gradient = 1
+                    if self.arguments.Vendor == 'Siemens':
+                        phasedir = 'y-'
+                    else:
+                        phasedir = 'y'
+                elif self.arguments.B1map_orientation == 'Sag':
+                    phasedir = 'x-'
+                    sign_gradient = 1
+                # user can still override phase_dir even if sign_gradient not set
+                if user_phase is not None:
+                    phasedir = str(user_phase)
       
             dst = os.path.split(self.path_EPI45)[0]
             
