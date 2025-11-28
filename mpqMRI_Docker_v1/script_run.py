@@ -372,9 +372,9 @@ def main():
     # Histogram generation
     try:
         mask_files = [
-            intermediary_folder / 'c1T1w_Mag.nii.gz',
-            intermediary_folder / 'c2T1w_Mag.nii.gz',
-            intermediary_folder / 'c3T1w_Mag.nii.gz'
+            intermediary_folder / 'c1T1w_mag.nii.gz',
+            intermediary_folder / 'c2T1w_mag.nii.gz',
+            intermediary_folder / 'c3T1w_mag.nii.gz'
         ]
         map_files = {
             'T1': final_maps_folder / 'T1_map_B1corr_True_Spoilcorr_True_2echoes.nii.gz',
