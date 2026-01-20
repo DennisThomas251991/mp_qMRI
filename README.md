@@ -46,6 +46,7 @@ Neuroimage. 2015 May 1;111:622-30. [doi:10.1016/j.neuroimage.2015.02.041](https:
 - Python 3 (if running without Docker)
 
 ### Quick Start (Docker)
+The following is only a quick guideline to understand how to run the codes. We recommend going through the "Detailed_instructions.txt" and following the steps detailed there.
 
 1. **Clone the repository:**
     ```
