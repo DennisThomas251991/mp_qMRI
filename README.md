@@ -42,7 +42,7 @@ Neuroimage. 2015 May 1;111:622-30. [doi:10.1016/j.neuroimage.2015.02.041](https:
 ### Prerequisites
 
 - Docker Desktop: [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
-- Git: [https://git-scm.com/downloads](https://git-scm.com/downloads)
+- Git
 - Python 3 (if running without Docker)
 
 ### Quick Start (Docker)
