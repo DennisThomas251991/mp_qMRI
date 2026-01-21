@@ -122,10 +122,10 @@ def interactive_update_args(args):
     args.TR2 = int(user_input_with_default('TR2 [ms]', args.TR2))
     args.nTE = int(user_input_with_default('nTE (Number of echo times)', args.nTE))
     args.x0 = int(user_input_with_default('x0 value', args.x0))
-    args.phantom = user_input_with_default('Phantom (True/False)', args.phantom) 
-    args.masking = user_input_with_default('masking (True/False)', args.masking) 
-    args.b1plus_mapping = user_input_with_default('b1plus_mapping (True/False)', args.b1plus_mapping) 
-    args.corr_for_imperfect_spoiling = user_input_with_default('corr_for_imperfect_spoiling (True/False)', args.corr_for_imperfect_spoiling) 
+    args.phantom = user_input_with_default('Phantom (True/False)', str(args.phantom)).lower() == 'true' 
+    args.masking = user_input_with_default('masking (True/False)', str(args.masking)).lower() == 'true' 
+    args.b1plus_mapping = user_input_with_default('b1plus_mapping (True/False)', args.b1plus_mapping).lower() == 'true' 
+    args.corr_for_imperfect_spoiling = user_input_with_default('corr_for_imperfect_spoiling (True/False)', str(args.corr_for_imperfect_spoiling)).lower() == 'true' 
     args.Phantom_mask_threshold_B1mapping = int(user_input_with_default('Phantom_mask_threshold_B1mapping', args.Phantom_mask_threshold_B1mapping))
     args.Phantom_mask_threshold_T1mapping = int(user_input_with_default('Phantom_mask_threshold_T1mapping', args.Phantom_mask_threshold_T1mapping))
     args.spoil_increment = int(user_input_with_default('Spoil increment', args.spoil_increment))
@@ -136,9 +136,9 @@ def interactive_update_args(args):
         num_echoes = int(user_input_with_default('Number of echoes', 6))
         args.echotimes = [T0 + i * delta_t for i in range(num_echoes)]
     args.QSM_average_echoes_qsm = [int(e) for e in user_input_with_default('QSM_average_echoes_qsm (comma-separated)', ','.join(map(str, args.QSM_average_echoes_qsm))).split(',')]
-    args.coregister_mGREs = user_input_with_default('Coregister mGREs? (True/False)', args.coregister_mGREs) 
+    args.coregister_mGREs = user_input_with_default('Coregister mGREs? (True/False)', str(args.coregister_mGREs)).lower() == 'true' 
     args.B1map_orientation = user_input_with_default('B1map_orientation (Sag/Tra)', args.B1map_orientation)
-    args.complex_interpolation = user_input_with_default('complex_interpolation (True/False)', args.complex_interpolation) 
+    args.complex_interpolation = user_input_with_default('complex_interpolation (True/False)', str(args.complex_interpolation)).lower() == 'true' 
     # Allow user to override sign_gradient; leave as None to use module defaults
     sg = user_input_with_default('sign_gradient (+1 or -1) or leave blank to use default', args.sign_gradient)
     try:
