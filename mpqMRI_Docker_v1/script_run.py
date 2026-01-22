@@ -124,7 +124,7 @@ def interactive_update_args(args):
     args.x0 = int(user_input_with_default('x0 value', args.x0))
     args.phantom = user_input_with_default('Phantom (True/False)', str(args.phantom)).lower() == 'true' 
     args.masking = user_input_with_default('masking (True/False)', str(args.masking)).lower() == 'true' 
-    args.b1plus_mapping = user_input_with_default('b1plus_mapping (True/False)', args.b1plus_mapping).lower() == 'true' 
+    args.b1plus_mapping = user_input_with_default('b1plus_mapping (True/False)', str(args.b1plus_mapping)).lower() == 'true' 
     args.corr_for_imperfect_spoiling = user_input_with_default('corr_for_imperfect_spoiling (True/False)', str(args.corr_for_imperfect_spoiling)).lower() == 'true' 
     args.Phantom_mask_threshold_B1mapping = int(user_input_with_default('Phantom_mask_threshold_B1mapping', args.Phantom_mask_threshold_B1mapping))
     args.Phantom_mask_threshold_T1mapping = int(user_input_with_default('Phantom_mask_threshold_T1mapping', args.Phantom_mask_threshold_T1mapping))
