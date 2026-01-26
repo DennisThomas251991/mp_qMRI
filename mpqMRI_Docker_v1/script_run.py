@@ -157,7 +157,7 @@ def interactive_update_args(args):
     except Exception:
         args.phase_dir = None
     args.B1_mapping_method = user_input_with_default('B1_mapping_method (Fast EPI/Volz 2010)', args.B1_mapping_method)
-    args.QSM_mapping = user_input_with_default('QSM_mapping (True/False)', args.QSM_mapping)
+    args.QSM_mapping = user_input_with_default('QSM_mapping (True/False)', str(args.QSM_mapping)).lower() == 'true' 
     return args
 
 def write_log_file(args, output_folder):
@@ -324,11 +324,13 @@ def main():
     # H2O mapping
     H2O_object = H2Omapping_mpqMRI.H2O_map_mpqMRI(args, T1_map, B1map_coreg, T2Star_gre12)
     H2O = H2O_object.run()
+    
     # Clean up segmentation masks
-    for mask_name in ['c1T1w_mag.nii', 'c2T1w_mag.nii', 'c3T1w_mag.nii']:
-        mask_path = output_folder / mask_name
-        if mask_path.exists():
-            mask_path.unlink()
+    #for mask_name in ['c1T1w_mag.nii', 'c2T1w_mag.nii', 'c3T1w_mag.nii']:
+    #    mask_path = output_folder / mask_name
+    #    if mask_path.exists():
+    #        mask_path.unlink()
+            
     # QSM mapping (optional)
     if args.QSM_mapping:
         QSM_object = QSM_mapping_NEW.QSM_mapping_mpqMRI(args)
@@ -341,7 +343,7 @@ def main():
         'avg_T2Star.nii.gz',
         't1map_linear_approach.nii.gz',
         'QSM_avg_map.nii.gz',
-        'T2Star_FA{int(self.arguments.FA1):02d}.nii.gz,'
+        'T2Star_FA{int(self.arguments.FA1):02d}.nii.gz',
         'T2Star_FA{int(self.arguments.FA2):02d}.nii.gz'
     ]
     main_maps = [
@@ -372,9 +374,9 @@ def main():
     # Histogram generation
     try:
         mask_files = [
-            intermediary_folder / 'c1T1w_mag.nii.gz',
-            intermediary_folder / 'c2T1w_mag.nii.gz',
-            intermediary_folder / 'c3T1w_mag.nii.gz'
+            intermediary_folder / 'c1T1w_mag.nii',
+            intermediary_folder / 'c2T1w_mag.nii',
+            intermediary_folder / 'c3T1w_mag.nii'
         ]
         map_files = {
             'T1': final_maps_folder / 'T1_map_B1corr_True_Spoilcorr_True_2echoes.nii.gz',
